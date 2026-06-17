@@ -14,7 +14,7 @@ import (
 	"github.com/evanw/esbuild/pkg/api"
 )
 
-func ProcessPages(projectDir string, templates embed.FS) error {
+func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 	pagesDir := filepath.Join(projectDir, "pages")
 	genDir := filepath.Join(projectDir, "lib", "pages")
 
@@ -36,6 +36,16 @@ func ProcessPages(projectDir string, templates embed.FS) error {
 	appLayoutPath := filepath.Join(projectDir, "app.spidey")
 	if appLayoutBytes, err := os.ReadFile(appLayoutPath); err == nil {
 		appLayoutStr = string(appLayoutBytes)
+		
+		// Inject Livereload if in dev mode
+		if isDev {
+			script := `<script>const evtSource = new EventSource("http://localhost:3001/livereload");evtSource.onmessage = function(e) { if(e.data === "reload") { setTimeout(() => window.location.reload(), 100); } };</script>`
+			if strings.Contains(appLayoutStr, "</body>") {
+				appLayoutStr = strings.Replace(appLayoutStr, "</body>", script+"\n</body>", 1)
+			} else {
+				appLayoutStr += "\n" + script
+			}
+		}
 	}
 
 	componentsDir := filepath.Join(projectDir, "components")
