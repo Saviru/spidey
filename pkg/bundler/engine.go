@@ -1,6 +1,7 @@
 package bundler
 
 import (
+	"embed"
 	"fmt"
 	"io/fs"
 	"os"
@@ -9,30 +10,52 @@ import (
 	"strings"
 
 	"spidey/pkg/parser"
+
+	"github.com/evanw/esbuild/pkg/api"
 )
 
-func ProcessPages(projectDir string) error {
+func ProcessPages(projectDir string, templates embed.FS) error {
 	pagesDir := filepath.Join(projectDir, "pages")
 	genDir := filepath.Join(projectDir, "lib", "pages")
 
-	// Create the directory if it doesn't exist
-	if err := os.MkdirAll(genDir, 0755); err != nil {
-		return fmt.Errorf("failed to create hidden build dir: %v", err)
+	os.RemoveAll(genDir)
+	os.MkdirAll(genDir, 0755)
+
+	// Read separate base.go template and inject it safely
+	baseCodeBytes, err := templates.ReadFile("templates/base.go")
+	if err != nil {
+		return fmt.Errorf("could not read base.go template: %v", err)
+	}
+	baseCode := strings.Replace(string(baseCodeBytes), "//go:build ignore", "", 1)
+	baseCode = strings.TrimSpace(baseCode) + "\n"
+
+	os.WriteFile(filepath.Join(genDir, "spidey_base.go"), []byte(baseCode), 0644)
+
+	// User Layout Check
+	appLayoutStr := ""
+	appLayoutPath := filepath.Join(projectDir, "app.spidey")
+	if appLayoutBytes, err := os.ReadFile(appLayoutPath); err == nil {
+		appLayoutStr = string(appLayoutBytes)
 	}
 
-	// Delete previously transpiled files (*_spidey.go)
-	entries, _ := os.ReadDir(genDir)
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), "_spidey.go") {
-			os.Remove(filepath.Join(genDir, entry.Name()))
+	componentsDir := filepath.Join(projectDir, "components")
+	var componentsBuilder strings.Builder
+
+	filepath.WalkDir(componentsDir, func(path string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && strings.HasSuffix(path, ".spidey") {
+			content, _ := os.ReadFile(path)
+			name := strings.TrimSuffix(filepath.Base(path), ".spidey")
+
+			// Wrap HTML in a Go template define block
+			componentsBuilder.WriteString(fmt.Sprintf("\n{{define \"%s\"}}\n%s\n{{end}}\n", name, string(content)))
 		}
-	}
+		return nil
+	})
 
-	baseFile := filepath.Join(genDir, "spidey_base.go")
-	os.WriteFile(baseFile, []byte("package pages\n"), 0644)
+	componentsStr := componentsBuilder.String()
 
 	// Transpile .spidey files
-	err := filepath.WalkDir(pagesDir, func(path string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(pagesDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -46,25 +69,36 @@ func ProcessPages(projectDir string) error {
 			fileName := filepath.Base(path)
 			componentName := strings.TrimSuffix(fileName, ".spidey")
 
-			goCode, err := parser.TranspileToGo(componentName, string(content))
+			goCode, err := parser.TranspileToGo(componentName, string(content), appLayoutStr, componentsStr)
 			if err != nil {
 				return err
 			}
 
 			genPath := filepath.Join(genDir, componentName+"_spidey.go")
-			if err := os.WriteFile(genPath, []byte(goCode), 0644); err != nil {
-				return err
-			}
+			os.WriteFile(genPath, []byte(goCode), 0644)
 		}
-
-		_ = os.Remove(filepath.Join(projectDir, "lib", "pages", "dummy.go"))
-
 		return nil
 	})
 
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("transpilation failed: %v", err)
 	}
+
+	// 5. esbuild frontend logic...
+	componentEntry := filepath.Join(projectDir, "components", "index.js")
+	if _, err := os.Stat(componentEntry); err == nil {
+		fmt.Println("Spidey: Bundling frontend components...")
+		api.Build(api.BuildOptions{
+			EntryPoints:       []string{componentEntry},
+			Outfile:           filepath.Join(projectDir, "public", "assets", "bundle.js"),
+			Bundle:            true,
+			MinifyWhitespace:  true,
+			MinifyIdentifiers: true,
+			MinifySyntax:      true,
+			Write:             true,
+		})
+	}
+
 	return nil
 }
 

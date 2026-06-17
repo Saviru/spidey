@@ -4,8 +4,10 @@ import (
 	"embed"
 	"fmt"
 	"os"
+	"strings"
 
 	"spidey/pkg/bundler"
+	"spidey/pkg/dev"
 )
 
 //go:embed templates/*
@@ -13,7 +15,7 @@ var starterTemplates embed.FS
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: gox [init|dev|build]")
+		fmt.Println("Usage: spidey [init|dev|build]")
 		os.Exit(1)
 	}
 
@@ -24,16 +26,18 @@ func main() {
 	case "init":
 		initProject()
 	case "dev":
-		fmt.Println("Starting dev server...")
-		// Watch files and trigger bundler.ProcessPages() on change
+		fmt.Println("Starting Spidey development environment...")
+		// Pass starterTemplates to the watcher
+		dev.StartWatcher(currentDir, starterTemplates)
 	case "build":
-		fmt.Println("Gox: Transpiling pages...")
-		if err := bundler.ProcessPages(currentDir); err != nil {
+		fmt.Println("Spidey: Transpiling pages...")
+		// Pass starterTemplates to the build engine
+		if err := bundler.ProcessPages(currentDir, starterTemplates); err != nil {
 			fmt.Printf("Engine Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Println("Gox: Compiling final binary...")
+		fmt.Println("Spidey: Compiling final binary...")
 		if err := bundler.CompileBinary(currentDir); err != nil {
 			fmt.Printf("Compilation Error: %v\n", err)
 			os.Exit(1)
@@ -57,22 +61,34 @@ func initProject() {
 	os.MkdirAll("lib/router", 0755)
 
 	// Inject the Router Code
-	routerCode, err := starterTemplates.ReadFile("templates/router.go.txt")
+	routerCodeBytes, err := starterTemplates.ReadFile("templates/router.go")
 	if err == nil {
-		os.WriteFile("lib/router/router.go", routerCode, 0644)
+		routerCode := string(routerCodeBytes)
+		routerCode = strings.Replace(routerCode, "//go:build ignore", "", 1)
+
+		routerCode = strings.TrimSpace(routerCode) + "\n"
+
+		os.WriteFile("lib/router/router.go", []byte(routerCode), 0644)
 	} else {
 		fmt.Println("Warning: Failed to inject router code.")
 	}
 
-	// Inject the Dummy Page for first-time compilation
-	dummyCode := "package pages\n\nfunc RenderIndex(data interface{}) (string, error) { return \"\", nil }"
-	os.WriteFile("lib/pages/dummy.go", []byte(dummyCode), 0644)
+	// Inject the Dynamic Registry (Base File)
+	baseCodeBytes, err := starterTemplates.ReadFile("templates/base.go")
+	if err == nil {
+		// Convert to string and strip out the ignore tag
+		baseCode := string(baseCodeBytes)
+		baseCode = strings.Replace(baseCode, "//go:build ignore", "", 1)
+		baseCode = strings.TrimSpace(baseCode) + "\n"
+
+		os.WriteFile("lib/pages/base.go", []byte(baseCode), 0644)
+	} else {
+		fmt.Println("Warning: Failed to inject base code.")
+	}
 
 	// Setup configs
 	gitignore := "lib/\nbin/\n.env\n"
 	os.WriteFile(".gitignore", []byte(gitignore), 0644)
 
-	
-
-	fmt.Println("Jet workspace created successfully")
+	fmt.Println("Spidey workspace created successfully")
 }

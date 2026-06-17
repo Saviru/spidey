@@ -1,3 +1,5 @@
+//go:build ignore
+
 package router
 
 import (
@@ -37,10 +39,14 @@ func New() *App {
 }
 
 func (a *App) Handle(method, path string, handler func(*Context)) {
+	if path == "/" {
+		path = "/{$}"
+	}
+
 	route := method + " " + path
 	a.mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
 		ctx := &Context{Writer: w, Request: r}
-		
+
 		index := 0
 		var next func()
 		next = func() {
@@ -56,4 +62,9 @@ func (a *App) Handle(method, path string, handler func(*Context)) {
 }
 
 func (a *App) GET(path string, handler func(*Context)) { a.Handle(http.MethodGet, path, handler) }
-func (a *App) Listen(port string) error { return http.ListenAndServe(":"+port, a.mux) }
+func (a *App) Listen(port string) error                { return http.ListenAndServe(":"+port, a.mux) }
+
+// Static serves standard files (CSS, JS, Images)
+func (a *App) Static(prefix, dir string) {
+	a.mux.Handle(prefix, http.StripPrefix(prefix, http.FileServer(http.Dir(dir))))
+}
