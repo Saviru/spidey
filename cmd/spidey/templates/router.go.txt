@@ -1,0 +1,59 @@
+package router
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+type Context struct {
+	Writer  http.ResponseWriter
+	Request *http.Request
+}
+
+func (c *Context) JSON(status int, data interface{}) {
+	c.Writer.Header().Set("Content-Type", "application/json")
+	c.Writer.WriteHeader(status)
+	json.NewEncoder(c.Writer).Encode(data)
+}
+
+func (c *Context) Param(key string) string {
+	return c.Request.PathValue(key)
+}
+
+func (c *Context) Send(content string) {
+	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	c.Writer.Write([]byte(content))
+}
+
+type Middleware func(*Context, func())
+
+type App struct {
+	mux         *http.ServeMux
+	middlewares []Middleware
+}
+
+func New() *App {
+	return &App{mux: http.NewServeMux()}
+}
+
+func (a *App) Handle(method, path string, handler func(*Context)) {
+	route := method + " " + path
+	a.mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
+		ctx := &Context{Writer: w, Request: r}
+		
+		index := 0
+		var next func()
+		next = func() {
+			if index < len(a.middlewares) {
+				index++
+				a.middlewares[index-1](ctx, next)
+			} else {
+				handler(ctx)
+			}
+		}
+		next()
+	})
+}
+
+func (a *App) GET(path string, handler func(*Context)) { a.Handle(http.MethodGet, path, handler) }
+func (a *App) Listen(port string) error { return http.ListenAndServe(":"+port, a.mux) }
