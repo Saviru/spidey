@@ -5,6 +5,9 @@ package router
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strings"
 )
 
 type Context struct {
@@ -29,30 +32,71 @@ func (c *Context) Send(content string) {
 
 type Middleware func(*Context, func())
 
-type App struct {
-	mux         *http.ServeMux
+type RouterGroup struct {
+	prefix      string
+	app         *App
 	middlewares []Middleware
 }
 
-func New() *App {
-	return &App{mux: http.NewServeMux()}
+type App struct {
+	RouterGroup
+	mux        *http.ServeMux
+	registered map[string]bool
 }
 
-func (a *App) Handle(method, path string, handler func(*Context)) {
-	if path == "/" {
-		path = "/{$}"
+func New() *App {
+	app := &App{
+		mux:        http.NewServeMux(),
+		registered: make(map[string]bool),
+	}
+	app.RouterGroup = RouterGroup{
+		prefix:      "",
+		app:         app,
+		middlewares: nil,
+	}
+	return app
+}
+
+func (g *RouterGroup) Group(prefix string, middlewares ...Middleware) *RouterGroup {
+	newMiddlewares := append([]Middleware{}, g.middlewares...)
+	newMiddlewares = append(newMiddlewares, middlewares...)
+
+	return &RouterGroup{
+		prefix:      g.prefix + prefix,
+		app:         g.app,
+		middlewares: newMiddlewares,
+	}
+}
+
+func (g *RouterGroup) Handle(method, path string, handler func(*Context)) {
+	fullPath := g.prefix + path
+
+	if fullPath == "/" {
+		fullPath = "/{$}"
+	} else if fullPath != "/" && strings.HasSuffix(fullPath, "/") && !strings.HasSuffix(fullPath, "/{$}") {
+		// Clean trailing slash for exact matches unless it's a directory proxy
+		// Actually, ServeMux handles trailing slashes as sub-tree matches.
 	}
 
-	route := method + " " + path
-	a.mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
+	route := fullPath
+	if method != "ANY" && method != "" {
+		route = method + " " + fullPath
+	}
+
+	if g.app.registered[route] {
+		return // Skip duplicate route so manual routes can override auto routes
+	}
+	g.app.registered[route] = true
+
+	g.app.mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
 		ctx := &Context{Writer: w, Request: r}
 
 		index := 0
 		var next func()
 		next = func() {
-			if index < len(a.middlewares) {
+			if index < len(g.middlewares) {
 				index++
-				a.middlewares[index-1](ctx, next)
+				g.middlewares[index-1](ctx, next)
 			} else {
 				handler(ctx)
 			}
@@ -61,10 +105,33 @@ func (a *App) Handle(method, path string, handler func(*Context)) {
 	})
 }
 
-func (a *App) GET(path string, handler func(*Context)) { a.Handle(http.MethodGet, path, handler) }
-func (a *App) Listen(port string) error                { return http.ListenAndServe(":"+port, a.mux) }
+// Proxy routes everything under a path to a microservice
+func (g *RouterGroup) Proxy(path string, targetURL string) {
+	target, err := url.Parse(targetURL)
+	if err != nil {
+		panic("invalid target URL for proxy: " + targetURL)
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
 
-// Static serves standard files (CSS, JS, Images)
+	fullPath := g.prefix + path
+	if !strings.HasSuffix(fullPath, "/") {
+		fullPath += "/"
+	}
+	trimPrefix := fullPath[:len(fullPath)-1]
+
+	g.Handle("ANY", fullPath, func(c *Context) {
+		c.Request.URL.Path = strings.TrimPrefix(c.Request.URL.Path, trimPrefix)
+		proxy.ServeHTTP(c.Writer, c.Request)
+	})
+}
+
+func (g *RouterGroup) GET(path string, handler func(*Context)) { g.Handle(http.MethodGet, path, handler) }
+func (g *RouterGroup) POST(path string, handler func(*Context)) { g.Handle(http.MethodPost, path, handler) }
+func (g *RouterGroup) PUT(path string, handler func(*Context)) { g.Handle(http.MethodPut, path, handler) }
+func (g *RouterGroup) DELETE(path string, handler func(*Context)) { g.Handle(http.MethodDelete, path, handler) }
+
+func (a *App) Listen(port string) error { return http.ListenAndServe(":"+port, a.mux) }
+
 func (a *App) Static(prefix, dir string) {
 	a.mux.Handle(prefix, http.StripPrefix(prefix, http.FileServer(http.Dir(dir))))
 }
