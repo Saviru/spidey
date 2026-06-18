@@ -24,7 +24,7 @@ func getModuleName(projectDir string) string {
 			}
 		}
 	}
-	return "testapp"
+	return "spideyapp"
 }
 
 func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
@@ -49,7 +49,7 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 	appLayoutPath := filepath.Join(projectDir, "app.spidey")
 	if appLayoutBytes, err := os.ReadFile(appLayoutPath); err == nil {
 		appLayoutStr = string(appLayoutBytes)
-		
+
 		// Inject Livereload if in dev mode
 		if isDev {
 			script := `<script>const evtSource = new EventSource("http://localhost:3001/livereload");evtSource.onmessage = function(e) { if(e.data === "reload") { setTimeout(() => window.location.reload(), 100); } };</script>`
@@ -119,7 +119,7 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 			if routePath != "/" && strings.HasSuffix(routePath, "/") {
 				routePath = strings.TrimSuffix(routePath, "/")
 			}
-			
+
 			re := regexp.MustCompile(`\[([^\]]+)\]`)
 			routePath = re.ReplaceAllString(routePath, `{$1}`)
 
@@ -153,7 +153,7 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 		return fmt.Errorf("transpilation failed: %v", err)
 	}
 
-	// 5. esbuild frontend logic...
+	// esbuild
 	componentEntry := filepath.Join(projectDir, "components", "index.js")
 	if _, err := os.Stat(componentEntry); err == nil {
 		fmt.Println("Spidey: Bundling frontend components...")

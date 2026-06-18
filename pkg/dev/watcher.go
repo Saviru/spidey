@@ -57,7 +57,7 @@ func triggerReload() {
 		default:
 		}
 	}
-	// Clear clients list so they reconnect
+	// Clear clients list to reconnect
 	clients = nil
 }
 
@@ -111,7 +111,7 @@ func StartWatcher(projectDir string, templates embed.FS) {
 				return
 			}
 
-			// ignore metadata changes (like chmod) to avoid unnecessary rebuilds
+			// ignore metadata changes (like chmod)
 			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) || event.Has(fsnotify.Remove) {
 				fmt.Printf("File changed: %s | Syncing...\n", filepath.Base(event.Name))
 				if err := bundler.ProcessPages(projectDir, templates, true); err != nil {
@@ -141,7 +141,6 @@ func restartServer(projectDir string) {
 		serverCmd.Wait()
 	}
 
-	// Recompile the backend to pick up the newly generated Go files from our transpiler
 	if err := bundler.CompileBinary(projectDir); err != nil {
 		fmt.Printf("Compilation Error: %v\n", err)
 		return

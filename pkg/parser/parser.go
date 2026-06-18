@@ -15,7 +15,6 @@ type ParsedPage struct {
 func Parse(content string) (*ParsedPage, error) {
 	page := &ParsedPage{}
 
-	// Extract Go Frontmatter
 	if strings.HasPrefix(content, "---go") {
 		parts := strings.SplitN(content, "---", 3)
 		if len(parts) >= 3 {
@@ -32,7 +31,6 @@ func Parse(content string) (*ParsedPage, error) {
 		}
 	}
 
-	// Extract Scripts
 	if scriptStart := strings.Index(content, `<script data-island`); scriptStart != -1 {
 		if scriptEnd := strings.Index(content, "</script>"); scriptEnd != -1 {
 			// Extract everything inside the script tag
@@ -42,7 +40,6 @@ func Parse(content string) (*ParsedPage, error) {
 		}
 	}
 
-	// Remaining HTML
 	page.HTML = strings.TrimSpace(content)
 
 	return page, nil

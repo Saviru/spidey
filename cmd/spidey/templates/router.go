@@ -32,6 +32,20 @@ func (c *Context) Send(content string) {
 
 type Middleware func(*Context, func())
 
+// WrapStd natively adapts standard Go middlewares (func(http.Handler) http.Handler) into Spidey's format
+func WrapStd(std func(http.Handler) http.Handler) Middleware {
+	return func(c *Context, next func()) {
+		nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c.Writer = w
+			c.Request = r
+			next()
+		})
+		
+		wrappedHandler := std(nextHandler)
+		wrappedHandler.ServeHTTP(c.Writer, c.Request)
+	}
+}
+
 type RouterGroup struct {
 	prefix      string
 	app         *App
@@ -57,9 +71,23 @@ func New() *App {
 	return app
 }
 
-func (g *RouterGroup) Group(prefix string, middlewares ...Middleware) *RouterGroup {
+func (g *RouterGroup) Group(prefix string, middlewares ...any) *RouterGroup {
+	var parsedMiddlewares []Middleware
+	for _, m := range middlewares {
+		switch v := m.(type) {
+		case Middleware:
+			parsedMiddlewares = append(parsedMiddlewares, v)
+		case func(*Context, func()):
+			parsedMiddlewares = append(parsedMiddlewares, v)
+		case func(http.Handler) http.Handler:
+			parsedMiddlewares = append(parsedMiddlewares, WrapStd(v))
+		default:
+			panic("Spidey Router: Unsupported middleware type. Must be Spidey Middleware or standard func(http.Handler) http.Handler")
+		}
+	}
+
 	newMiddlewares := append([]Middleware{}, g.middlewares...)
-	newMiddlewares = append(newMiddlewares, middlewares...)
+	newMiddlewares = append(newMiddlewares, parsedMiddlewares...)
 
 	return &RouterGroup{
 		prefix:      g.prefix + prefix,
@@ -125,10 +153,18 @@ func (g *RouterGroup) Proxy(path string, targetURL string) {
 	})
 }
 
-func (g *RouterGroup) GET(path string, handler func(*Context)) { g.Handle(http.MethodGet, path, handler) }
-func (g *RouterGroup) POST(path string, handler func(*Context)) { g.Handle(http.MethodPost, path, handler) }
-func (g *RouterGroup) PUT(path string, handler func(*Context)) { g.Handle(http.MethodPut, path, handler) }
-func (g *RouterGroup) DELETE(path string, handler func(*Context)) { g.Handle(http.MethodDelete, path, handler) }
+func (g *RouterGroup) GET(path string, handler func(*Context)) {
+	g.Handle(http.MethodGet, path, handler)
+}
+func (g *RouterGroup) POST(path string, handler func(*Context)) {
+	g.Handle(http.MethodPost, path, handler)
+}
+func (g *RouterGroup) PUT(path string, handler func(*Context)) {
+	g.Handle(http.MethodPut, path, handler)
+}
+func (g *RouterGroup) DELETE(path string, handler func(*Context)) {
+	g.Handle(http.MethodDelete, path, handler)
+}
 
 func (a *App) Listen(port string) error { return http.ListenAndServe(":"+port, a.mux) }
 
