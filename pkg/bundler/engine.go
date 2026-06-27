@@ -50,6 +50,16 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 	if appLayoutBytes, err := os.ReadFile(appLayoutPath); err == nil {
 		appLayoutStr = string(appLayoutBytes)
 
+		// Inject scoped CSS stylesheet
+		cssLink := `<link rel="stylesheet" href="/assets/spidey.css">`
+		if !strings.Contains(appLayoutStr, cssLink) {
+			if strings.Contains(appLayoutStr, "</head>") {
+				appLayoutStr = strings.Replace(appLayoutStr, "</head>", cssLink+"\n</head>", 1)
+			} else {
+				appLayoutStr = cssLink + "\n" + appLayoutStr
+			}
+		}
+
 		// Inject Livereload if in dev mode
 		if isDev {
 			script := `<script>const evtSource = new EventSource("http://localhost:3001/livereload");evtSource.onmessage = function(e) { if(e.data === "reload") { setTimeout(() => window.location.reload(), 100); } };</script>`
@@ -63,14 +73,21 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 
 	componentsDir := filepath.Join(projectDir, "components")
 	var componentsBuilder strings.Builder
+	var globalStyles strings.Builder
 
 	filepath.WalkDir(componentsDir, func(path string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() && strings.HasSuffix(path, ".spidey") {
 			content, _ := os.ReadFile(path)
 			name := strings.TrimSuffix(filepath.Base(path), ".spidey")
 
-			// Wrap HTML in a Go template define block
-			componentsBuilder.WriteString(fmt.Sprintf("\n{{define \"%s\"}}\n%s\n{{end}}\n", name, string(content)))
+			parsed, err := parser.Parse(name, string(content))
+			if err == nil {
+				if parsed.Styles != "" {
+					globalStyles.WriteString(parsed.Styles + "\n")
+				}
+				// Wrap HTML in a Go template define block
+				componentsBuilder.WriteString(fmt.Sprintf("\n{{define \"%s\"}}\n%s\n{{end}}\n", name, parsed.HTML))
+			}
 		}
 		return nil
 	})
@@ -101,7 +118,7 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 			relPath = filepath.ToSlash(relPath)
 			componentName := strings.TrimSuffix(relPath, ".spidey")
 
-			goCode, err := parser.TranspileToGo(componentName, string(content), appLayoutStr, componentsStr)
+			goCode, err := parser.TranspileToGo(componentName, string(content), appLayoutStr, componentsStr, &globalStyles)
 			if err != nil {
 				return err
 			}
@@ -152,6 +169,10 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("transpilation failed: %v", err)
 	}
+
+	// Output global styles
+	os.MkdirAll(filepath.Join(projectDir, "public", "assets"), 0755)
+	os.WriteFile(filepath.Join(projectDir, "public", "assets", "spidey.css"), []byte(globalStyles.String()), 0644)
 
 	// esbuild
 	componentEntry := filepath.Join(projectDir, "components", "index.js")

@@ -7,10 +7,14 @@ import (
 )
 
 // TranspileToGo converts .spidey into .go
-func TranspileToGo(componentName string, rawContent string, appLayout string, components string) (string, error) {
-	parsed, err := Parse(rawContent)
+func TranspileToGo(componentName string, rawContent string, appLayout string, components string, globalStyles *strings.Builder) (string, error) {
+	parsed, err := Parse(componentName, rawContent)
 	if err != nil {
 		return "", err
+	}
+
+	if parsed.Styles != "" && globalStyles != nil {
+		globalStyles.WriteString(parsed.Styles + "\n")
 	}
 
 	re := regexp.MustCompile(`<([A-Z][a-zA-Z0-9]*)\s*/>`)
@@ -30,7 +34,7 @@ func TranspileToGo(componentName string, rawContent string, appLayout string, co
 		finalHTML = parsedComponents + "\n" + parsedHTML
 	}
 
-	// remove HTML backticks to avoid breaking Go raw string literals
+	// remove HTML backticks
 	safeHTML := strings.ReplaceAll(finalHTML, "`", "` + \"`\" + `")
 
 	var builder strings.Builder

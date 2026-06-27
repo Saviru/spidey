@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spidey Tracker</title>
-    <link rel="stylesheet" href="/public/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Spidey Test App</title>
 </head>
 <body>
-    <div class="app-container">
+    <Navbar />
+    <main>
         {{template "content" .}}
-    </div>
+    </main>
 </body>
 </html>

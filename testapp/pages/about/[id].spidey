@@ -1,0 +1,31 @@
+<div class="profile">
+    <h2>User Profile</h2>
+    <p>Dynamic User ID: <strong>{{.Id}}</strong></p>
+    <button class="btn">Message User</button>
+</div>
+
+<style>
+    .profile {
+        margin: 2rem auto;
+        padding: 2rem;
+        border: 2px solid #2ed573;
+        border-radius: 12px;
+        max-width: 600px;
+        text-align: center;
+        font-family: sans-serif;
+        background: #f1f2f6;
+    }
+    h2 { color: #2ed573; }
+    /* This generic .btn class won't conflict with index.spidey! */
+    .btn {
+        background: #2ed573;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        font-size: 1.1rem;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 1rem;
+    }
+    .btn:hover { background: #7bed9f; }
+</style>
