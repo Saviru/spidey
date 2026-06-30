@@ -60,6 +60,16 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 			}
 		}
 
+		// Inject Client Bootstrapper for Islands
+		clientScript := `<script src="/assets/spidey-client.js" type="module"></script>`
+		if !strings.Contains(appLayoutStr, clientScript) {
+			if strings.Contains(appLayoutStr, "</body>") {
+				appLayoutStr = strings.Replace(appLayoutStr, "</body>", clientScript+"\n</body>", 1)
+			} else {
+				appLayoutStr += "\n" + clientScript
+			}
+		}
+
 		// Inject Livereload if in dev mode
 		if isDev {
 			script := `<script>const evtSource = new EventSource("http://localhost:3001/livereload");evtSource.onmessage = function(e) { if(e.data === "reload") { setTimeout(() => window.location.reload(), 100); } };</script>`
@@ -174,18 +184,48 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 	os.MkdirAll(filepath.Join(projectDir, "public", "assets"), 0755)
 	os.WriteFile(filepath.Join(projectDir, "public", "assets", "spidey.css"), []byte(globalStyles.String()), 0644)
 
-	// esbuild
-	componentEntry := filepath.Join(projectDir, "components", "index.js")
-	if _, err := os.Stat(componentEntry); err == nil {
-		fmt.Println("Spidey: Bundling frontend components...")
+	// Write spidey-client.js bootstrapper
+	clientCode := `
+document.addEventListener("DOMContentLoaded", () => {
+	const islands = document.querySelectorAll("spidey-island");
+	islands.forEach(async (island) => {
+		const compName = island.getAttribute("data-component");
+		if (compName) {
+			try {
+				const module = await import("/assets/components/" + compName + ".js");
+				if (module.mount) {
+					module.mount(island);
+				}
+			} catch (e) {
+				console.error("Spidey: Failed to load island", compName, e);
+			}
+		}
+	});
+});
+`
+	os.WriteFile(filepath.Join(projectDir, "public", "assets", "spidey-client.js"), []byte(clientCode), 0644)
+
+	// esbuild components for islands
+	var jsEntries []string
+	filepath.WalkDir(componentsDir, func(path string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() && (strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".jsx")) {
+			jsEntries = append(jsEntries, path)
+		}
+		return nil
+	})
+
+	if len(jsEntries) > 0 {
+		fmt.Println("Spidey: Bundling frontend islands...")
 		api.Build(api.BuildOptions{
-			EntryPoints:       []string{componentEntry},
-			Outfile:           filepath.Join(projectDir, "public", "assets", "bundle.js"),
+			EntryPoints:       jsEntries,
+			Outdir:            filepath.Join(projectDir, "public", "assets", "components"),
 			Bundle:            true,
 			MinifyWhitespace:  true,
 			MinifyIdentifiers: true,
 			MinifySyntax:      true,
 			Write:             true,
+			Format:            api.FormatESModule,
+			Splitting:         true,
 		})
 	}
 

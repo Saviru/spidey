@@ -17,16 +17,29 @@ func TranspileToGo(componentName string, rawContent string, appLayout string, co
 		globalStyles.WriteString(parsed.Styles + "\n")
 	}
 
-	re := regexp.MustCompile(`<([A-Z][a-zA-Z0-9]*)\s*/>`)
+	re := regexp.MustCompile(`(?s)<([A-Z][a-zA-Z0-9]*)([^>]*)/>`)
 
-	parsedComponents := re.ReplaceAllString(components, `{{template "$1" .}}`)
-	parsedHTML := re.ReplaceAllString(parsed.HTML, `{{template "$1" .}}`)
+	replaceFunc := func(match string) string {
+		submatch := re.FindStringSubmatch(match)
+		if len(submatch) == 3 {
+			compName := submatch[1]
+			attrs := submatch[2]
+			if strings.Contains(attrs, "client:load") {
+				return fmt.Sprintf(`<spidey-island data-component="%s">{{template "%s" .}}</spidey-island>`, compName, compName)
+			}
+			return fmt.Sprintf(`{{template "%s" .}}`, compName)
+		}
+		return match
+	}
+
+	parsedComponents := re.ReplaceAllStringFunc(components, replaceFunc)
+	parsedHTML := re.ReplaceAllStringFunc(parsed.HTML, replaceFunc)
 
 	// Wrap the page content inside the appLayout if it exists
 	var finalHTML string
 	if appLayout != "" {
 		// Convert components inside the layout file
-		parsedLayout := re.ReplaceAllString(appLayout, `{{template "$1" .}}`)
+		parsedLayout := re.ReplaceAllStringFunc(appLayout, replaceFunc)
 
 		// Put component definitions outside content block
 		finalHTML = parsedLayout + "\n" + parsedComponents + "\n{{define \"content\"}}\n" + parsedHTML + "\n{{end}}"

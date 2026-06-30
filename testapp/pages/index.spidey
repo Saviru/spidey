@@ -1,28 +1,33 @@
----go
-// Example backend logic injected into pages package
-type Placeholder struct {}
----
-<Hero />
+<Sidebar client:load />
 
-<div class="content">
-    <p>This is the homepage. Notice how the hero component's CSS is scoped!</p>
-    <button class="btn">Test Scoped CSS Button</button>
-</div>
+<main class="board-area">
+    <div class="board-header">
+        <IssueForm client:load />
+    </div>
+    <div class="board-content">
+        <IssueBoard client:load />
+    </div>
+</main>
 
 <style>
-    .content {
-        padding: 2rem;
-        text-align: center;
-        font-family: sans-serif;
-    }
-    .btn {
-        background: #1e90ff;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        font-size: 1.2rem;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-    .btn:hover { background: #3742fa; }
+.board-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    overflow: hidden;
+}
+.board-header {
+    height: 70px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 32px;
+}
+.board-content {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 32px;
+}
 </style>
