@@ -33,5 +33,7 @@ go.work.sum
 
 # Spidey dev
 spidey.exe
+spidey-test.exe
+~spidey.exe
 testapp/
 constapp/
