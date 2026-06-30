@@ -118,6 +118,15 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 			return err
 		}
 
+		if !d.IsDir() {
+			if strings.HasSuffix(path, ".jsx") {
+				fmt.Println("Error: JSX is not supported in Spidey pages.")
+				return nil
+			} else if strings.HasSuffix(path, ".js") {
+				fmt.Printf("Warning: Please avoid using .js files directly (%s). Use the native .spidey format in pages.\n", filepath.Base(path))
+			}
+		}
+
 		if !d.IsDir() && strings.HasSuffix(path, ".spidey") {
 			content, err := os.ReadFile(path)
 			if err != nil {
@@ -208,8 +217,13 @@ document.addEventListener("DOMContentLoaded", () => {
 	// esbuild components for islands
 	var jsEntries []string
 	filepath.WalkDir(componentsDir, func(path string, d fs.DirEntry, err error) error {
-		if err == nil && !d.IsDir() && (strings.HasSuffix(path, ".js") || strings.HasSuffix(path, ".jsx")) {
-			jsEntries = append(jsEntries, path)
+		if err == nil && !d.IsDir() {
+			if strings.HasSuffix(path, ".jsx") {
+				fmt.Println("Error: JSX is not supported in Spidey.")
+			} else if strings.HasSuffix(path, ".js") {
+				fmt.Printf("Warning: Please avoid using .js files directly (%s). Use the native .spidey format in components.\n", filepath.Base(path))
+				jsEntries = append(jsEntries, path)
+			}
 		}
 		return nil
 	})
