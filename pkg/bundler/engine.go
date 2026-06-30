@@ -27,7 +27,34 @@ func getModuleName(projectDir string) string {
 	return "spideyapp"
 }
 
-func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
+func buildNestedLayout(pagesDir, pagePath, appLayoutStr string) string {
+	currentLayout := appLayoutStr
+	
+	relPath, err := filepath.Rel(pagesDir, pagePath)
+	if err != nil {
+		return currentLayout
+	}
+	
+	dir := filepath.Dir(relPath)
+	if dir == "." {
+		return currentLayout
+	}
+	
+	parts := strings.Split(filepath.ToSlash(dir), "/")
+	currentDir := pagesDir
+	
+	for _, part := range parts {
+		currentDir = filepath.Join(currentDir, part)
+		layoutPath := filepath.Join(currentDir, "layout.spidey")
+		if content, err := os.ReadFile(layoutPath); err == nil {
+			currentLayout = strings.Replace(currentLayout, `{{template "content" .}}`, string(content), 1)
+		}
+	}
+	
+	return currentLayout
+}
+
+func ProcessPages(projectDir string, templates embed.FS, liveReloadPort string) error {
 	pagesDir := filepath.Join(projectDir, "pages")
 	genDir := filepath.Join(projectDir, "lib", "pages")
 
@@ -71,8 +98,8 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 		}
 
 		// Inject Livereload if in dev mode
-		if isDev {
-			script := `<script>const evtSource = new EventSource("http://localhost:3001/livereload");evtSource.onmessage = function(e) { if(e.data === "reload") { setTimeout(() => window.location.reload(), 100); } };</script>`
+		if liveReloadPort != "" {
+			script := fmt.Sprintf(`<script>const evtSource = new EventSource("http://localhost:%s/livereload");evtSource.onmessage = function(e) { if(e.data === "reload") { setTimeout(() => window.location.reload(), 100); } };</script>`, liveReloadPort)
 			if strings.Contains(appLayoutStr, "</body>") {
 				appLayoutStr = strings.Replace(appLayoutStr, "</body>", script+"\n</body>", 1)
 			} else {
@@ -133,11 +160,16 @@ func ProcessPages(projectDir string, templates embed.FS, isDev bool) error {
 				return err
 			}
 
+			if filepath.Base(path) == "layout.spidey" {
+				return nil
+			}
+
 			relPath, _ := filepath.Rel(pagesDir, path)
 			relPath = filepath.ToSlash(relPath)
 			componentName := strings.TrimSuffix(relPath, ".spidey")
 
-			goCode, err := parser.TranspileToGo(componentName, string(content), appLayoutStr, componentsStr, &globalStyles)
+			pageLayoutStr := buildNestedLayout(pagesDir, path, appLayoutStr)
+			goCode, err := parser.TranspileToGo(componentName, string(content), pageLayoutStr, componentsStr, &globalStyles)
 			if err != nil {
 				return err
 			}

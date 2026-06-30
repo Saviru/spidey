@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -23,7 +24,7 @@ import (
 var clients []chan struct{}
 var clientsMu sync.Mutex
 
-func startLiveReloadServer() {
+func startLiveReloadServer() string {
 	http.HandleFunc("/livereload", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
@@ -46,7 +47,17 @@ func startLiveReloadServer() {
 			}
 		}
 	})
-	go http.ListenAndServe(":3001", nil)
+	
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		log.Println("Could not start livereload server:", err)
+		return "3001" // fallback
+	}
+	
+	port := fmt.Sprintf("%d", listener.Addr().(*net.TCPAddr).Port)
+	go http.Serve(listener, nil)
+	
+	return port
 }
 
 func triggerReload() {
@@ -89,7 +100,7 @@ func getPort(projectDir string) string {
 
 // Accept templates as the second argument
 func StartWatcher(projectDir string, templates embed.FS) {
-	startLiveReloadServer()
+	liveReloadPort := startLiveReloadServer()
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -98,7 +109,7 @@ func StartWatcher(projectDir string, templates embed.FS) {
 	defer watcher.Close()
 
 	fmt.Println("Spidey: Running initial sync...")
-	if err := bundler.ProcessPages(projectDir, templates, true); err != nil {
+	if err := bundler.ProcessPages(projectDir, templates, liveReloadPort); err != nil {
 		fmt.Println("Sync error:", err)
 	}
 
@@ -130,7 +141,7 @@ func StartWatcher(projectDir string, templates embed.FS) {
 			// ignore metadata changes (like chmod)
 			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) || event.Has(fsnotify.Remove) {
 				fmt.Printf("File changed: %s | Syncing...\n", filepath.Base(event.Name))
-				if err := bundler.ProcessPages(projectDir, templates, true); err != nil {
+				if err := bundler.ProcessPages(projectDir, templates, liveReloadPort); err != nil {
 					fmt.Println("Sync error:", err)
 				}
 				restartServer(projectDir)

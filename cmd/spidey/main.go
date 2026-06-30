@@ -37,7 +37,7 @@ func main() {
 	case "build":
 		fmt.Println("Spidey: Transpiling pages...")
 		// Pass starterTemplates to the build engine
-		if err := bundler.ProcessPages(currentDir, starterTemplates, false); err != nil {
+		if err := bundler.ProcessPages(currentDir, starterTemplates, ""); err != nil {
 			fmt.Printf("Engine Error: %v\n", err)
 			os.Exit(1)
 		}
