@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -72,6 +73,20 @@ func (fw filterWriter) Write(p []byte) (n int, err error) {
 	return fw.w.Write(p)
 }
 
+// Find difined port no
+func getPort(projectDir string) string {
+	mainPath := filepath.Join(projectDir, "api", "main.go")
+	content, err := os.ReadFile(mainPath)
+	if err == nil {
+		re := regexp.MustCompile(`app\.Run\(":(.*?)"\)`)
+		matches := re.FindStringSubmatch(string(content))
+		if len(matches) > 1 {
+			return matches[1]
+		}
+	}
+	return "3000"
+}
+
 // Accept templates as the second argument
 func StartWatcher(projectDir string, templates embed.FS) {
 	startLiveReloadServer()
@@ -102,7 +117,8 @@ func StartWatcher(projectDir string, templates embed.FS) {
 	fmt.Println("Spidey Watcher: monitoring for changes.")
 
 	restartServer(projectDir)
-	openBrowser("http://localhost:3000")
+	port := getPort(projectDir)
+	openBrowser("http://localhost:" + port)
 
 	for {
 		select {
