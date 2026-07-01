@@ -3,8 +3,22 @@ package parser
 import (
 	"crypto/md5"
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+func processSelector(p string, scopeAttr string) string {
+	p = strings.TrimSpace(p)
+	if strings.HasPrefix(p, ":global(") && strings.HasSuffix(p, ")") {
+		return p[8 : len(p)-1]
+	}
+	if strings.Contains(p, ":global(") {
+		re := regexp.MustCompile(`:global\((.*?)\)`)
+		p = re.ReplaceAllString(p, "$1")
+		return "[" + scopeAttr + "] " + p
+	}
+	return "[" + scopeAttr + "] " + p
+}
 
 type ParsedPage struct {
 	GoLogic string
@@ -38,7 +52,7 @@ func ScopeCSS(css, scopeAttr string) string {
 				} else {
 					parts := strings.Split(s, ",")
 					for j, p := range parts {
-						parts[j] = "[" + scopeAttr + "] " + strings.TrimSpace(p)
+						parts[j] = processSelector(p, scopeAttr)
 					}
 					result.WriteString(strings.Join(parts, ", ") + " {\n")
 				}
@@ -75,7 +89,35 @@ func Parse(componentName string, content string) (*ParsedPage, error) {
 	hash := fmt.Sprintf("data-spidey-%x", md5.Sum([]byte(componentName)))[:20] // e.g. data-spidey-1a2b3c4d...
 
 	// Extract Styles
-	if styleStart := strings.Index(content, "<style>"); styleStart != -1 {
+	isModule := false
+	if styleStart := strings.Index(content, "<style module>"); styleStart != -1 {
+		if styleEnd := strings.Index(content, "</style>"); styleEnd != -1 {
+			rawStyles := content[styleStart+14 : styleEnd]
+
+			re := regexp.MustCompile(`\.([a-zA-Z_][a-zA-Z0-9_-]*)`)
+			classNames := re.FindAllStringSubmatch(rawStyles, -1)
+
+			processedClasses := make(map[string]bool)
+			for _, match := range classNames {
+				className := match[1]
+				if processedClasses[className] {
+					continue
+				}
+				processedClasses[className] = true
+
+				hashedName := fmt.Sprintf("%s_%s", className, hash[:8])
+				
+				reClass := regexp.MustCompile(`\.` + regexp.QuoteMeta(className) + `\b`)
+				rawStyles = reClass.ReplaceAllString(rawStyles, "."+hashedName)
+
+				content = strings.ReplaceAll(content, "$style."+className, hashedName)
+			}
+			
+			page.Styles = rawStyles
+			content = content[:styleStart] + content[styleEnd+8:]
+			isModule = true
+		}
+	} else if styleStart := strings.Index(content, "<style>"); styleStart != -1 {
 		if styleEnd := strings.Index(content, "</style>"); styleEnd != -1 {
 			rawStyles := content[styleStart+7 : styleEnd]
 			page.Styles = ScopeCSS(rawStyles, hash)
@@ -93,7 +135,7 @@ func Parse(componentName string, content string) (*ParsedPage, error) {
 	}
 
 	htmlContent := strings.TrimSpace(content)
-	if page.Styles != "" {
+	if page.Styles != "" && !isModule {
 		page.HTML = fmt.Sprintf("<div %s style=\"display: contents;\">\n%s\n</div>", hash, htmlContent)
 	} else {
 		page.HTML = htmlContent
