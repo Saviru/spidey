@@ -142,20 +142,49 @@ func ProcessPages(projectDir string, templates embed.FS, liveReloadPort string) 
 				contentBytes, _ := os.ReadFile(path)
 				content := string(contentBytes)
 
-				re := regexp.MustCompile(`//spidey:route\s+([A-Z]+)\s+([^\s]+)\s*\nfunc\s+([A-Za-z0-9_]+)`)
+				re := regexp.MustCompile(`((?:[ \t]*//spidey:[^\n]*\n)+)func\s+([A-Za-z0-9_]+)`)
 				matches := re.FindAllStringSubmatch(content, -1)
 
 				for _, match := range matches {
-					if len(match) == 4 {
-						method := match[1]
-						routePath := match[2]
-						funcName := match[3]
+					if len(match) == 3 {
+						commentsBlock := match[1]
+						funcName := match[2]
 
-						pathRe := regexp.MustCompile(`\[([^\]]+)\]`)
-						routePath = pathRe.ReplaceAllString(routePath, `{$1}`)
+						var middlewares []string
+						var method, routePath string
 
-						apiRoutesBuilder.WriteString(fmt.Sprintf("\tapp.Handle(\"%s\", \"%s\", api.%s)\n", method, routePath, funcName))
-						hasApiRoutes = true
+						lines := strings.Split(commentsBlock, "\n")
+						for _, line := range lines {
+							line = strings.TrimSpace(line)
+							if strings.HasPrefix(line, "//spidey:middleware") {
+								parts := strings.Fields(line)
+								if len(parts) >= 2 {
+									middlewares = append(middlewares, parts[1])
+								}
+							} else if strings.HasPrefix(line, "//spidey:route") {
+								parts := strings.Fields(line)
+								if len(parts) >= 3 {
+									method = parts[1]
+									routePath = parts[2]
+								}
+							}
+						}
+
+						if method != "" && routePath != "" {
+							pathRe := regexp.MustCompile(`\[([^\]]+)\]`)
+							routePath = pathRe.ReplaceAllString(routePath, `{$1}`)
+
+							if len(middlewares) > 0 {
+								mwArgs := make([]string, len(middlewares))
+								for i, mw := range middlewares {
+									mwArgs[i] = "api." + mw
+								}
+								apiRoutesBuilder.WriteString(fmt.Sprintf("\tapp.Group(\"\", %s).Handle(\"%s\", \"%s\", api.%s)\n", strings.Join(mwArgs, ", "), method, routePath, funcName))
+							} else {
+								apiRoutesBuilder.WriteString(fmt.Sprintf("\tapp.Handle(\"%s\", \"%s\", api.%s)\n", method, routePath, funcName))
+							}
+							hasApiRoutes = true
+						}
 					}
 				}
 			}
