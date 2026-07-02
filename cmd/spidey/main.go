@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"strings"
 
-	"spidey/pkg/bundler"
-	"spidey/pkg/dev"
+	"spidey/internal/bundler"
+	"spidey/internal/dev"
 )
 
 //go:embed templates/*

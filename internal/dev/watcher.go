@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"spidey/pkg/bundler"
+	"spidey/internal/bundler"
 
 	"github.com/fsnotify/fsnotify"
 )
