@@ -49,6 +49,28 @@ func main() {
 		}
 
 		fmt.Println("Build successful! Executable is in ./bin/server")
+	case "export":
+		fmt.Println("Spidey: Transpiling pages for static export...")
+		if err := bundler.ProcessPages(currentDir, starterTemplates, ""); err != nil {
+			fmt.Printf("Engine Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Spidey: Compiling temporary SSG binary...")
+		if err := bundler.CompileBinary(currentDir); err != nil {
+			fmt.Printf("Compilation Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Run the generated binary with --export
+		exportCmd := exec.Command("./bin/server", "--export")
+		exportCmd.Dir = currentDir
+		exportCmd.Stdout = os.Stdout
+		exportCmd.Stderr = os.Stderr
+		if err := exportCmd.Run(); err != nil {
+			fmt.Printf("Export Error: %v\n", err)
+			os.Exit(1)
+		}
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 	}
