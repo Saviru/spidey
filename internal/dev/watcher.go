@@ -47,16 +47,16 @@ func startLiveReloadServer() string {
 			}
 		}
 	})
-	
+
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
 		log.Println("Could not start livereload server:", err)
 		return "3001" // fallback
 	}
-	
+
 	port := fmt.Sprintf("%d", listener.Addr().(*net.TCPAddr).Port)
 	go http.Serve(listener, nil)
-	
+
 	return port
 }
 
@@ -89,7 +89,7 @@ func getPort(projectDir string) string {
 	mainPath := filepath.Join(projectDir, "api", "main.go")
 	content, err := os.ReadFile(mainPath)
 	if err == nil {
-		re := regexp.MustCompile(`app\.Run\(":(.*?)"\)`)
+		re := regexp.MustCompile(`app\.Listen\("(.*?)"\)`)
 		matches := re.FindStringSubmatch(string(content))
 		if len(matches) > 1 {
 			return matches[1]
