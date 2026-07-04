@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"spidey/internal/bundler"
+	"spidey/internal/config"
 	"spidey/internal/dev"
 )
 
@@ -32,38 +33,41 @@ func main() {
 		initProject(projectName)
 	case "dev":
 		fmt.Println("Starting Spidey development environment...")
+		cfg := config.LoadConfig(currentDir)
 		// Pass starterTemplates to the watcher
-		dev.StartWatcher(currentDir, starterTemplates)
+		dev.StartWatcher(currentDir, starterTemplates, cfg)
 	case "build":
 		fmt.Println("Spidey: Transpiling pages...")
+		cfg := config.LoadConfig(currentDir)
 		// Pass starterTemplates to the build engine
-		if err := bundler.ProcessPages(currentDir, starterTemplates, ""); err != nil {
+		if err := bundler.ProcessPages(currentDir, starterTemplates, "", cfg); err != nil {
 			fmt.Printf("Engine Error: %v\n", err)
 			os.Exit(1)
 		}
 
 		fmt.Println("Spidey: Compiling final binary...")
-		if err := bundler.CompileBinary(currentDir); err != nil {
+		if err := bundler.CompileBinary(currentDir, cfg); err != nil {
 			fmt.Printf("Compilation Error: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Println("Build successful! Executable is in ./bin/server")
+		fmt.Printf("Build successful! Executable is in ./%s\n", cfg.Directories.OutputDir)
 	case "export":
 		fmt.Println("Spidey: Transpiling pages for static export...")
-		if err := bundler.ProcessPages(currentDir, starterTemplates, ""); err != nil {
+		cfg := config.LoadConfig(currentDir)
+		if err := bundler.ProcessPages(currentDir, starterTemplates, "", cfg); err != nil {
 			fmt.Printf("Engine Error: %v\n", err)
 			os.Exit(1)
 		}
 
 		fmt.Println("Spidey: Compiling temporary SSG binary...")
-		if err := bundler.CompileBinary(currentDir); err != nil {
+		if err := bundler.CompileBinary(currentDir, cfg); err != nil {
 			fmt.Printf("Compilation Error: %v\n", err)
 			os.Exit(1)
 		}
 
 		// Run the generated binary with --export
-		exportCmd := exec.Command("./bin/server", "--export")
+		exportCmd := exec.Command(fmt.Sprintf("./%s", cfg.Directories.OutputDir), "--export")
 		exportCmd.Dir = currentDir
 		exportCmd.Stdout = os.Stdout
 		exportCmd.Stderr = os.Stderr

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"spidey/internal/config"
 	"spidey/internal/parser"
 	"strings"
 
@@ -300,12 +301,12 @@ func transpilePages(projectDir string, appLayoutStr string, componentsStr string
 	return nil
 }
 
-func bundleFrontendAssets(projectDir string, globalStyles *strings.Builder) error {
+func bundleFrontendAssets(projectDir string, globalStyles *strings.Builder, cfg *config.Config) error {
 	componentsDir := filepath.Join(projectDir, "components")
 
 	// Output global styles
-	os.MkdirAll(filepath.Join(projectDir, "public", "assets"), 0755)
-	os.WriteFile(filepath.Join(projectDir, "public", "assets", "spidey.css"), []byte(globalStyles.String()), 0644)
+	os.MkdirAll(filepath.Join(projectDir, cfg.Directories.PublicDir, "assets"), 0755)
+	os.WriteFile(filepath.Join(projectDir, cfg.Directories.PublicDir, "assets", "spidey.css"), []byte(globalStyles.String()), 0644)
 
 	// Write spidey-client.js bootstrapper
 	clientCode := `
@@ -326,7 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	});
 });
 `
-	os.WriteFile(filepath.Join(projectDir, "public", "assets", "spidey-client.js"), []byte(clientCode), 0644)
+	os.WriteFile(filepath.Join(projectDir, cfg.Directories.PublicDir, "assets", "spidey-client.js"), []byte(clientCode), 0644)
 
 	// esbuild components for islands
 	var jsEntries []string
@@ -346,7 +347,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		fmt.Println("Spidey: Bundling frontend islands...")
 		api.Build(api.BuildOptions{
 			EntryPoints:       jsEntries,
-			Outdir:            filepath.Join(projectDir, "public", "assets", "components"),
+			Outdir:            filepath.Join(projectDir, cfg.Directories.PublicDir, "assets", "components"),
 			Bundle:            true,
 			MinifyWhitespace:  true,
 			MinifyIdentifiers: true,
@@ -360,7 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
 	return nil
 }
 
-func ProcessPages(projectDir string, templates embed.FS, liveReloadPort string) error {
+func ProcessPages(projectDir string, templates embed.FS, liveReloadPort string, cfg *config.Config) error {
 	err := setupGeneratedDirectory(projectDir, templates)
 	if err != nil {
 		return err
@@ -375,5 +376,5 @@ func ProcessPages(projectDir string, templates embed.FS, liveReloadPort string) 
 		return err
 	}
 
-	return bundleFrontendAssets(projectDir, globalStyles)
+	return bundleFrontendAssets(projectDir, globalStyles, cfg)
 }

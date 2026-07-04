@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"spidey/internal/bundler"
+	"spidey/internal/config"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -85,7 +86,7 @@ func (fw filterWriter) Write(p []byte) (n int, err error) {
 }
 
 // Find difined port no
-func getPort(projectDir string) string {
+func getPort(projectDir string, cfg *config.Config) string {
 	mainPath := filepath.Join(projectDir, "api", "main.go")
 	content, err := os.ReadFile(mainPath)
 	if err == nil {
@@ -95,11 +96,11 @@ func getPort(projectDir string) string {
 			return matches[1]
 		}
 	}
-	return "3000"
+	return fmt.Sprintf("%d", cfg.Port)
 }
 
 // Accept templates as the second argument
-func StartWatcher(projectDir string, templates embed.FS) {
+func StartWatcher(projectDir string, templates embed.FS, cfg *config.Config) {
 	liveReloadPort := startLiveReloadServer()
 
 	watcher, err := fsnotify.NewWatcher()
@@ -109,7 +110,7 @@ func StartWatcher(projectDir string, templates embed.FS) {
 	defer watcher.Close()
 
 	fmt.Println("Spidey: Running initial sync...")
-	if err := bundler.ProcessPages(projectDir, templates, liveReloadPort); err != nil {
+	if err := bundler.ProcessPages(projectDir, templates, liveReloadPort, cfg); err != nil {
 		fmt.Println("Sync error:", err)
 	}
 
@@ -127,8 +128,8 @@ func StartWatcher(projectDir string, templates embed.FS) {
 
 	fmt.Println("Spidey Watcher: monitoring for changes.")
 
-	restartServer(projectDir)
-	port := getPort(projectDir)
+	restartServer(projectDir, cfg)
+	port := getPort(projectDir, cfg)
 	openBrowser("http://localhost:" + port)
 
 	for {
@@ -141,10 +142,10 @@ func StartWatcher(projectDir string, templates embed.FS) {
 			// ignore metadata changes (like chmod)
 			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) || event.Has(fsnotify.Remove) {
 				fmt.Printf("File changed: %s | Syncing...\n", filepath.Base(event.Name))
-				if err := bundler.ProcessPages(projectDir, templates, liveReloadPort); err != nil {
+				if err := bundler.ProcessPages(projectDir, templates, liveReloadPort, cfg); err != nil {
 					fmt.Println("Sync error:", err)
 				}
-				restartServer(projectDir)
+				restartServer(projectDir, cfg)
 				go func() {
 					time.Sleep(250 * time.Millisecond)
 					triggerReload()
@@ -162,18 +163,18 @@ func StartWatcher(projectDir string, templates embed.FS) {
 
 var serverCmd *exec.Cmd
 
-func restartServer(projectDir string) {
+func restartServer(projectDir string, cfg *config.Config) {
 	if serverCmd != nil && serverCmd.Process != nil {
 		serverCmd.Process.Kill()
 		serverCmd.Wait()
 	}
 
-	if err := bundler.CompileBinary(projectDir); err != nil {
+	if err := bundler.CompileBinary(projectDir, cfg); err != nil {
 		fmt.Printf("Compilation Error: %v\n", err)
 		return
 	}
 
-	serverPath := filepath.Join(projectDir, "bin", "server")
+	serverPath := filepath.Join(projectDir, cfg.Directories.OutputDir)
 	if runtime.GOOS == "windows" {
 		serverPath += ".exe"
 	}
