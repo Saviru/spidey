@@ -106,13 +106,13 @@ func Parse(componentName string, content string) (*ParsedPage, error) {
 				processedClasses[className] = true
 
 				hashedName := fmt.Sprintf("%s_%s", className, hash[:8])
-				
+
 				reClass := regexp.MustCompile(`\.` + regexp.QuoteMeta(className) + `\b`)
 				rawStyles = reClass.ReplaceAllString(rawStyles, "."+hashedName)
 
 				content = strings.ReplaceAll(content, "$style."+className, hashedName)
 			}
-			
+
 			page.Styles = rawStyles
 			content = content[:styleStart] + content[styleEnd+8:]
 			isModule = true

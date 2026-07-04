@@ -129,6 +129,16 @@ func initProject(projectName string) {
 	gitignore := "lib/\nbin/\n.env\n"
 	os.WriteFile(".gitignore", []byte(gitignore), 0644)
 
+	configJson := `{
+  "port": 3000,
+  "directories": {
+    "publicDir": "public",
+    "outputDir": "bin/server"
+  }
+}
+`
+	os.WriteFile("spidey.config.json", []byte(configJson), 0644)
+
 	// Create a placeholder routes file to prevent "undefined: pages.RegisterRoutes" errors
 	importPath := "testapp"
 	if projectName != "" {
