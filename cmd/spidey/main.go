@@ -139,6 +139,27 @@ func initProject(projectName string) {
 `
 	os.WriteFile("spidey.config.json", []byte(configJson), 0644)
 
+	// Create boilerplate api/main.go
+	apiMainCode := fmt.Sprintf(`package main
+
+import (
+	"%s/lib/pages"
+	"%s/lib/router"
+	"fmt"
+)
+
+func main() {
+	app := router.New()
+	
+	// Register auto-generated routes
+	pages.RegisterRoutes(app)
+	
+	app.Listen("3000")
+}
+`, projectName, projectName)
+
+	os.WriteFile("api/main.go", []byte(apiMainCode), 0644)
+
 	// Create a placeholder routes file to prevent "undefined: pages.RegisterRoutes" errors
 	importPath := "testapp"
 	if projectName != "" {
