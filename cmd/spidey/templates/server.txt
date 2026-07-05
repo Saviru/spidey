@@ -1,0 +1,15 @@
+package main
+
+import (
+	"%s/lib/pages"
+	"%s/lib/router"
+)
+
+func main() {
+	app := router.New()
+
+	// Register auto-generated routes
+	pages.RegisterRoutes(app)
+
+	app.Listen("3000")
+}
