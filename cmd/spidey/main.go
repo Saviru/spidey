@@ -145,7 +145,6 @@ func initProject(projectName string) {
 import (
 	"%s/lib/pages"
 	"%s/lib/router"
-	"fmt"
 )
 
 func main() {
@@ -159,6 +158,34 @@ func main() {
 `, projectName, projectName)
 
 	os.WriteFile("api/main.go", []byte(apiMainCode), 0644)
+
+	defaultPage := `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spidey - Weave the Web</title>
+    <style>
+        body { font-family: system-ui, sans-serif; text-align: center; padding: 10vh 20px; }
+        h1 { color: #1a1a1a; }
+        p { color: #666; }
+        code { background: #eee; padding: 2px 6px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <main>
+        {{template "content" .}}
+    </main>
+</body>
+</html>`
+
+	os.WriteFile("app.spidey", []byte(defaultPage), 0644)
+
+	indexPage := `<h1>Welcome to Spidey</h1>
+<p>You can edit this page by editing <code>pages/index.spidey</code></p>
+<p>Let's weave the web</p>`
+
+	os.WriteFile("pages/index.spidey", []byte(indexPage), 0644)
 
 	// Create a placeholder routes file to prevent "undefined: pages.RegisterRoutes" errors
 	importPath := "testapp"

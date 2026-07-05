@@ -126,11 +126,13 @@ func StartWatcher(projectDir string, templates embed.FS, cfg *config.Config) {
 	watcher.Add(componentsDir)
 	watcher.Add(appFile)
 
-	fmt.Println("Spidey Watcher: monitoring for changes.")
+	port := getPort(projectDir, cfg)
+
+	fmt.Printf("Spidey is running on %s\n", "http://localhost:"+port)
 
 	restartServer(projectDir, cfg)
-	port := getPort(projectDir, cfg)
 	openBrowser("http://localhost:" + port)
+	fmt.Println("Spidey: monitoring for changes.")
 
 	for {
 		select {
