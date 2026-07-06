@@ -32,36 +32,39 @@ func initProject(projectName string) {
 		os.MkdirAll(dir, 0755)
 	}
 
-	os.MkdirAll("lib/pages", 0755)
-	os.MkdirAll("lib/router", 0755)
+	os.MkdirAll("hub/pages", 0755)
+	os.MkdirAll("hub/router", 0755)
 
-	// lib/router/router.go
-	routerCodeBytes, err := starterTemplates.ReadFile("templates/router.go")
+	// hub/router/router.go
+	routerCodeBytes, err := starterTemplates.ReadFile("templates/router.txt")
 	if err == nil {
-		routerCode := string(routerCodeBytes)
-		routerCode = strings.Replace(routerCode, "//go:build ignore", "", 1)
-
-		routerCode = strings.TrimSpace(routerCode) + "\n"
-
-		createFileIfNotExists("lib/router/router.go", []byte(routerCode))
+		createFileIfNotExists("hub/router/router.go", routerCodeBytes)
 	} else {
 		fmt.Println("Warning: Failed to inject router.")
 	}
 
-	// lib/pages/base.go
+	// hub/router/context.go
+	contextCodeBytes, err := starterTemplates.ReadFile("templates/context.txt")
+	if err == nil {
+		createFileIfNotExists("hub/router/context.go", contextCodeBytes)
+	} else {
+		fmt.Println("Warning: Failed to inject context.")
+	}
+
+	// hub/pages/base.go
 	baseCodeBytes, err := starterTemplates.ReadFile("templates/base.go")
 	if err == nil {
 		baseCode := string(baseCodeBytes)
 		baseCode = strings.Replace(baseCode, "//go:build ignore", "", 1)
 		baseCode = strings.TrimSpace(baseCode) + "\n"
 
-		createFileIfNotExists("lib/pages/base.go", []byte(baseCode))
+		createFileIfNotExists("hub/pages/base.go", []byte(baseCode))
 	} else {
 		fmt.Println("Warning: Failed to create base file.")
 	}
 
 	// .gitignore
-	gitignore := "lib/\nbin/\n.env\n"
+	gitignore := "hub/\nbin/\n.env\n"
 	createFileIfNotExists(".gitignore", []byte(gitignore))
 
 	// spidey.config.json
@@ -105,7 +108,7 @@ func initProject(projectName string) {
 	routesByte, err := starterTemplates.ReadFile("templates/routes.txt")
 	if err == nil {
 		routesCode := fmt.Sprintf(string(routesByte), importPath)
-		createFileIfNotExists("lib/pages/routes.go", []byte(routesCode))
+		createFileIfNotExists("hub/pages/routes.go", []byte(routesCode))
 	} else {
 		fmt.Println("Warning: Failed to inject default route. Please run 'spidey dev' to fix it.")
 	}

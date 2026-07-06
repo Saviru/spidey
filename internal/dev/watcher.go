@@ -51,7 +51,7 @@ func startLiveReloadServer() string {
 
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
-		log.Println("Could not start livereload server:", err)
+		log.Println("Engine Error: Could not start livereload server.", err)
 		return "3001" // fallback
 	}
 
@@ -120,7 +120,7 @@ func StartWatcher(projectDir string, templates embed.FS, cfg *config.Config) {
 
 	err = watcher.Add(pagesDir)
 	if err != nil {
-		log.Fatal("Could not watch pages folder:", err)
+		log.Fatal("Engine Error: Could not watch pages folder.", err)
 	}
 
 	watcher.Add(componentsDir)
@@ -187,7 +187,7 @@ func restartServer(projectDir string, cfg *config.Config) {
 	serverCmd.Stderr = filterWriter{os.Stderr}
 
 	if err := serverCmd.Start(); err != nil {
-		fmt.Println("Failed to start server:", err)
+		fmt.Println("Engine Error: Failed to start server, ", err)
 	}
 }
 
@@ -204,6 +204,6 @@ func openBrowser(url string) {
 		err = fmt.Errorf("unsupported platform")
 	}
 	if err != nil {
-		fmt.Printf("Failed to open browser: %v\n", err)
+		fmt.Printf("Engine Error: Failed to open browser: %v\n", err)
 	}
 }

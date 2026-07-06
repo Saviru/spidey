@@ -1,8 +1,8 @@
 package main
 
 import (
-	"%s/lib/pages"
-	"%s/lib/router"
+	"%s/hub/pages"
+	"%s/hub/router"
 )
 
 func main() {

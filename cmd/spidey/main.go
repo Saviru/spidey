@@ -24,18 +24,18 @@ func main() {
 	currentDir, _ := os.Getwd()
 
 	switch command {
-	case "init":
+	case "init", "hatch":
 		var projectName string
 		if len(os.Args) > 2 {
 			projectName = os.Args[2]
 		}
 		initProject(projectName)
-	case "dev":
+	case "dev", "weave":
 		fmt.Println("Starting Spidey development environment...")
 		cfg := config.LoadConfig(currentDir)
 		// Pass starterTemplates to the watcher
 		dev.StartWatcher(currentDir, starterTemplates, cfg)
-	case "build":
+	case "build", "wrap":
 		fmt.Println("Spidey: Transpiling pages...")
 		cfg := config.LoadConfig(currentDir)
 		// Pass starterTemplates to the build engine
@@ -51,7 +51,7 @@ func main() {
 		}
 
 		fmt.Printf("Build successful! Executable is in ./%s\n", cfg.Directories.OutputDir)
-	case "export":
+	case "export", "shed":
 		fmt.Println("Spidey: Transpiling pages for static export...")
 		cfg := config.LoadConfig(currentDir)
 		if err := bundler.ProcessPages(currentDir, starterTemplates, "", cfg); err != nil {
