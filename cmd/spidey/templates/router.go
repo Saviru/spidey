@@ -53,6 +53,16 @@ func WrapStd(std func(http.Handler) http.Handler) Middleware {
 	}
 }
 
+type Directories struct {
+	PublicDir string `json:"publicDir"`
+	OutputDir string `json:"outputDir"`
+}
+
+type Config struct {
+	Port        int         `json:"port"`
+	Directories Directories `json:"directories"`
+}
+
 type RouterGroup struct {
 	prefix      string
 	app         *App
@@ -63,6 +73,7 @@ type App struct {
 	RouterGroup
 	mux        *http.ServeMux
 	registered map[string]bool
+	Config     Config
 }
 
 func New() *App {
@@ -70,6 +81,17 @@ func New() *App {
 		mux:        http.NewServeMux(),
 		registered: make(map[string]bool),
 	}
+
+	// Default config
+	app.Config.Port = 3000
+	app.Config.Directories.PublicDir = "public"
+	app.Config.Directories.OutputDir = "bin/server"
+
+	if file, err := os.Open("spidey.config.json"); err == nil {
+		defer file.Close()
+		json.NewDecoder(file).Decode(&app.Config)
+	}
+
 	app.RouterGroup = RouterGroup{
 		prefix:      "",
 		app:         app,

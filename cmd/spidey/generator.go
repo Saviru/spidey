@@ -73,7 +73,7 @@ func initProject(projectName string) {
 	}
 
 	// api/main.go
-	apiMainCodeBytes, err := starterTemplates.ReadFile("templates/server.go")
+	apiMainCodeBytes, err := starterTemplates.ReadFile("templates/server.txt")
 	if err == nil {
 		apiMainCodeTpl := string(apiMainCodeBytes)
 		apiMainCode := fmt.Sprintf(apiMainCodeTpl, projectName, projectName)
