@@ -43,6 +43,14 @@ func initProject(projectName string) {
 		fmt.Println("Warning: Failed to inject router.")
 	}
 
+	// hub/router/config.go
+	configCodeBytes, err := starterTemplates.ReadFile("templates/config.txt")
+	if err == nil {
+		createFileIfNotExists("hub/router/config.go", configCodeBytes)
+	} else {
+		fmt.Println("Warning: Failed to inject config structs.")
+	}
+
 	// hub/router/context.go
 	contextCodeBytes, err := starterTemplates.ReadFile("templates/context.txt")
 	if err == nil {

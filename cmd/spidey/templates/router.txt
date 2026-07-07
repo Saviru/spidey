@@ -31,15 +31,6 @@ func WrapStd(std func(http.Handler) http.Handler) Middleware {
 	}
 }
 
-type Directories struct {
-	PublicDir string `json:"publicDir"`
-	OutputDir string `json:"outputDir"`
-}
-
-type Config struct {
-	Port        int         `json:"port"`
-	Directories Directories `json:"directories"`
-}
 
 type RouterGroup struct {
 	prefix      string
