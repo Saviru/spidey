@@ -5,6 +5,8 @@ package router
 import (
 	json "github.com/goccy/go-json"
 	"net/http"
+	"net/url"
+	"strconv" 
 
 	"github.com/go-playground/validator/v10"
 )
@@ -14,6 +16,7 @@ var validate = validator.New()
 type Context struct {
 	Writer  http.ResponseWriter
 	Request *http.Request
+	queryCache url.Values
 }
 
 // JSON sends a standard JSON response

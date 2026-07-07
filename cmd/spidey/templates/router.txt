@@ -156,7 +156,9 @@ func (g *RouterGroup) PUT(path string, handler func(*Context)) {
 func (g *RouterGroup) DELETE(path string, handler func(*Context)) {
 	g.Handle(http.MethodDelete, path, handler)
 }
-
+func (g *RouterGroup) PATCH(path string, handler func(*Context)) {
+	g.Handle(http.MethodPatch, path, handler)
+}
 
 func (a *App) Static(prefix, dir string) {
 	a.mux.Handle(prefix, http.StripPrefix(prefix, http.FileServer(http.Dir(dir))))
