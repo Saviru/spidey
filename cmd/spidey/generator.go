@@ -26,7 +26,14 @@ func initProject(projectName string) {
 		}
 	}
 
+	fmt.Println("Fetching dependencies...")
+	getCmd := exec.Command("go", "get", "github.com/goccy/go-json")
+	getCmd.Stdout = os.Stdout
+	getCmd.Stderr = os.Stderr
+	getCmd.Run()
+
 	// Create workspace folders
+	fmt.Println("Creating workspace folders...")
 	dirs := []string{"api", "pages", "components", "public"}
 	for _, dir := range dirs {
 		os.MkdirAll(dir, 0755)

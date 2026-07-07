@@ -1,9 +1,10 @@
 package config
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
+
+	json "github.com/goccy/go-json"
 )
 
 type Directories struct {
