@@ -5,7 +5,11 @@ package router
 import (
 	json "github.com/goccy/go-json"
 	"net/http"
+
+	"github.com/go-playground/validator/v10"
 )
+
+var validate = validator.New()
 
 type Context struct {
 	Writer  http.ResponseWriter
@@ -22,7 +26,10 @@ func (c *Context) JSON(status int, data interface{}) {
 // BindJSON automatically parses the incoming JSON request body into a struct
 func (c *Context) BindJSON(obj interface{}) error {
 	defer c.Request.Body.Close()
-	return json.NewDecoder(c.Request.Body).Decode(obj)
+	if err := json.NewDecoder(c.Request.Body).Decode(obj); err != nil {
+		return err
+	}
+	return validate.Struct(obj)
 }
 
 // Param retrieves a path parameter (e.g. /users/{id})
