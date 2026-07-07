@@ -90,7 +90,7 @@ func getPort(projectDir string, cfg *config.Config) string {
 	mainPath := filepath.Join(projectDir, "api", "main.go")
 	content, err := os.ReadFile(mainPath)
 	if err == nil {
-		re := regexp.MustCompile(`app\.Listen\("(.*?)"\)`)
+		re := regexp.MustCompile(`app\.Listen\("?([0-9]+)"?\)`)
 		matches := re.FindStringSubmatch(string(content))
 		if len(matches) > 1 {
 			return matches[1]
