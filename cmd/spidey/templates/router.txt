@@ -4,7 +4,6 @@ package router
 
 import (
 	json "github.com/goccy/go-json"
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
