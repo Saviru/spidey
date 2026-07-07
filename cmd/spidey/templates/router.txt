@@ -157,13 +157,28 @@ func (g *RouterGroup) DELETE(path string, handler func(*Context)) {
 	g.Handle(http.MethodDelete, path, handler)
 }
 
-func (a *App) Listen(port string) error {
+func (a *App) Listen(port ...any) error {
 	for _, arg := range os.Args {
 		if arg == "--export" {
 			return a.exportStatic("out")
 		}
 	}
-	return http.ListenAndServe(":"+port, a.mux)
+
+	var addr string
+	if len(port) > 0 {
+		switch v := port[0].(type) {
+		case int:
+			addr = fmt.Sprintf(":%d", v)
+		case string:
+			addr = ":" + strings.TrimPrefix(v, ":")
+		default:
+			return fmt.Errorf("Error: Invalid port type. Port must be an 'int' or 'string'")
+		}
+	} else {
+		addr = fmt.Sprintf(":%d", a.Config.Port)
+	}
+
+	return http.ListenAndServe(addr, a.mux)
 }
 
 func (a *App) Static(prefix, dir string) {
