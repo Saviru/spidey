@@ -51,6 +51,14 @@ func initProject(projectName string) {
 		fmt.Println("Warning: Failed to inject config structs.")
 	}
 
+	// hub/router/export.go
+	exportCodeBytes, err := starterTemplates.ReadFile("templates/export.txt")
+	if err == nil {
+		createFileIfNotExists("hub/router/export.go", exportCodeBytes)
+	} else {
+		fmt.Println("Warning: Failed to inject export logic.")
+	}
+
 	// hub/router/context.go
 	contextCodeBytes, err := starterTemplates.ReadFile("templates/context.txt")
 	if err == nil {
