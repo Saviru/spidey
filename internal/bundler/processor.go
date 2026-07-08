@@ -1,6 +1,7 @@
 package bundler
 
 import (
+	"crypto/rand"
 	"embed"
 	"fmt"
 	"io/fs"
@@ -197,7 +198,7 @@ func generateAPIRoutes(projectDir string) (string, bool) {
 	return apiRoutesBuilder.String(), hasApiRoutes
 }
 
-func transpilePages(projectDir string, appLayoutStr string, componentsStr string, globalStyles *strings.Builder, apiRoutesStr string, hasApiRoutes bool) error {
+func transpilePages(projectDir string, appLayoutStr string, componentsStr string, globalStyles *strings.Builder, apiRoutesStr string, hasApiRoutes bool, aotJSBuffer *strings.Builder) error {
 	pagesDir := filepath.Join(projectDir, "pages")
 	genDir := filepath.Join(projectDir, "hub", "pages")
 
@@ -241,8 +242,10 @@ func transpilePages(projectDir string, appLayoutStr string, componentsStr string
 			relPath = filepath.ToSlash(relPath)
 			componentName := strings.TrimSuffix(relPath, ".spidey")
 
+			compiledHTML := CompileAOT(string(content), aotJSBuffer)
 			pageLayoutStr := buildNestedLayout(pagesDir, path, appLayoutStr)
-			goCode, err := parser.TranspileToGo(componentName, string(content), pageLayoutStr, componentsStr, globalStyles)
+
+			goCode, err := parser.TranspileToGo(componentName, compiledHTML, pageLayoutStr, componentsStr, globalStyles)
 			if err != nil {
 				return err
 			}
@@ -424,10 +427,43 @@ func ProcessPages(projectDir string, templates embed.FS, liveReloadPort string, 
 	componentsStr, globalStyles := processComponents(projectDir)
 	apiRoutesStr, hasApiRoutes := generateAPIRoutes(projectDir)
 
-	err = transpilePages(projectDir, appLayoutStr, componentsStr, globalStyles, apiRoutesStr, hasApiRoutes)
+	var aotJSBuffer strings.Builder
+
+	err = transpilePages(projectDir, appLayoutStr, componentsStr, globalStyles, apiRoutesStr, hasApiRoutes, &aotJSBuffer)
 	if err != nil {
 		return err
 	}
+	if aotJSBuffer.Len() > 0 {
+		finalJS := "document.addEventListener('DOMContentLoaded', () => {\n" + aotJSBuffer.String() + "\n});"
+		os.WriteFile(filepath.Join(projectDir, cfg.Directories.PublicDir, "assets", "spidey-aot.js"), []byte(finalJS), 0644)
+	}
 
 	return bundleFrontendAssets(projectDir, globalStyles, cfg)
+}
+
+func generateAOTID() string {
+	b := make([]byte, 4)
+	rand.Read(b)
+	return fmt.Sprintf("s-%x", b) //8-character ID
+}
+
+func CompileAOT(htmlContent string, aotJSBuffer *strings.Builder) string {
+	re := regexp.MustCompile(`@([a-z]+)="([^"]+)"`)
+	compiledHTML := re.ReplaceAllStringFunc(htmlContent, func(match string) string {
+		matches := re.FindStringSubmatch(match)
+		eventName := matches[1]
+		expression := matches[2]
+		uniqueID := generateAOTID()
+		jsCode := fmt.Sprintf(`
+	const el_%s = document.getElementById('%s');
+	if (el_%s) {
+		el_%s.addEventListener('%s', (e) => { %s });
+	}
+`, uniqueID, uniqueID, uniqueID, uniqueID, eventName, expression)
+
+		aotJSBuffer.WriteString(jsCode)
+		// Replace @click=".." with id="s-1234"
+		return fmt.Sprintf(`id="%s"`, uniqueID)
+	})
+	return compiledHTML
 }
