@@ -27,6 +27,14 @@ func WrapStd(std func(http.Handler) http.Handler) Middleware {
 	}
 }
 
+type Route struct {
+	Name string
+	Path string
+}
+
+func (r *Route) SetName(name string) {
+	r.Name = name
+}
 
 type RouterGroup struct {
 	prefix      string
@@ -90,7 +98,7 @@ func (g *RouterGroup) Group(prefix string, middlewares ...any) *RouterGroup {
 	}
 }
 
-func (g *RouterGroup) Handle(method, path string, handler func(*Context)) {
+func (g *RouterGroup) Handle(method, path string, handlers ...any) *Route {
 	fullPath := g.prefix + path
 
 	if fullPath == "/" {
@@ -103,9 +111,34 @@ func (g *RouterGroup) Handle(method, path string, handler func(*Context)) {
 	}
 
 	if g.app.registered[route] {
-		return // Skip duplicate route
+		return &Route{Path: fullPath} // Skip duplicate route
 	}
 	g.app.registered[route] = true
+
+	// Parse all route-specific handlers dynamically
+	var routeMiddlewares []Middleware
+	for _, m := range handlers {
+		switch v := m.(type) {
+		case Middleware:
+			routeMiddlewares = append(routeMiddlewares, v)
+		case func(*Context, func()):
+			routeMiddlewares = append(routeMiddlewares, v)
+		case func(http.Handler) http.Handler:
+			routeMiddlewares = append(routeMiddlewares, WrapStd(v))
+		case func(*Context): 
+			// Automatically adapt standard final handlers
+			routeMiddlewares = append(routeMiddlewares, func(c *Context, next func()) {
+				v(c)
+				next()
+			})
+		default:
+			panic("Spidey Error: Unsupported handler type passed to route.")
+		}
+	}
+
+	// combine Group middlewares with route-specific middlewares
+	totalMiddlewares := append([]Middleware{}, g.middlewares...)
+	totalMiddlewares = append(totalMiddlewares, routeMiddlewares...)
 
 	g.app.mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
 		ctx := &Context{Writer: w, Request: r}
@@ -113,16 +146,17 @@ func (g *RouterGroup) Handle(method, path string, handler func(*Context)) {
 		index := 0
 		var next func()
 		next = func() {
-			if index < len(g.middlewares) {
+			if index < len(totalMiddlewares) {
 				index++
-				g.middlewares[index-1](ctx, next)
-			} else {
-				handler(ctx)
+				totalMiddlewares[index-1](ctx, next)
 			}
 		}
 		next()
 	})
+
+	return &Route{Path: fullPath}
 }
+
 
 // Proxy routes everything under a path to a microservice
 func (g *RouterGroup) Proxy(path string, targetURL string) {
@@ -144,21 +178,38 @@ func (g *RouterGroup) Proxy(path string, targetURL string) {
 	})
 }
 
-func (g *RouterGroup) GET(path string, handler func(*Context)) {
-	g.Handle(http.MethodGet, path, handler)
+func (g *RouterGroup) GET(path string, handlers ...any) *Route {
+	return g.Handle(http.MethodGet, path, handlers...)
 }
-func (g *RouterGroup) POST(path string, handler func(*Context)) {
-	g.Handle(http.MethodPost, path, handler)
+func (g *RouterGroup) POST(path string, handlers ...any) *Route {
+	return g.Handle(http.MethodPost, path, handlers...)
 }
-func (g *RouterGroup) PUT(path string, handler func(*Context)) {
-	g.Handle(http.MethodPut, path, handler)
+func (g *RouterGroup) PUT(path string, handlers ...any) *Route {
+	return g.Handle(http.MethodPut, path, handlers...)
 }
-func (g *RouterGroup) DELETE(path string, handler func(*Context)) {
-	g.Handle(http.MethodDelete, path, handler)
+func (g *RouterGroup) DELETE(path string, handlers ...any) *Route {
+	return g.Handle(http.MethodDelete, path, handlers...)
 }
-func (g *RouterGroup) PATCH(path string, handler func(*Context)) {
-	g.Handle(http.MethodPatch, path, handler)
+func (g *RouterGroup) PATCH(path string, handlers ...any) *Route {
+	return g.Handle(http.MethodPatch, path, handlers...)
 }
+func (g *RouterGroup) HEAD(path string, handlers ...any) *Route {
+	return g.Handle(http.MethodHead, path, handlers...)
+}
+func (g *RouterGroup) OPTIONS(path string, handlers ...any) *Route {
+	return g.Handle(http.MethodOptions, path, handlers...)
+}
+func (g *RouterGroup) CONNECT(path string, handlers ...any) *Route {
+	return g.Handle(http.MethodConnect, path, handlers...)
+}
+func (g *RouterGroup) TRACE(path string, handlers ...any) *Route {
+	return g.Handle(http.MethodTrace, path, handlers...)
+}
+func (g *RouterGroup) ANY(path string, handlers ...any) *Route {
+	return g.Handle("ANY", path, handlers...)
+}
+
+
 
 func (a *App) Static(prefix, dir string) {
 	a.mux.Handle(prefix, http.StripPrefix(prefix, http.FileServer(http.Dir(dir))))
