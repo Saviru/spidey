@@ -19,6 +19,7 @@ type Context struct {
 	queryCache url.Values
 }
 
+// JSON
 // JSON sends a standard JSON response
 func (c *Context) JSON(status int, data interface{}) {
 	c.Writer.Header().Set("Content-Type", "application/json")
@@ -81,4 +82,54 @@ func (c *Context) JSONP(status int, data interface{}, callback string) {
 	c.Writer.Write([]byte(callback + "("))
 	json.NewEncoder(c.Writer).Encode(data)
 	c.Writer.Write([]byte(");"))
+}
+
+//Query
+// Parses the URL once and caches it for all future calls
+func (c *Context) getQueryCache() url.Values {
+	if c.queryCache == nil {
+		c.queryCache = c.Request.URL.Query()
+	}
+	return c.queryCache
+}
+
+// Returns the string value for a URL query parameter
+func (c *Context) Query(key string) string {
+	return c.getQueryCache().Get(key)
+}
+
+// Returns the query value or a fallback default
+func (c *Context) DefaultQuery(key, defaultValue string) string {
+	value := c.Query(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
+// Safely auto-converts a query parameter into an integer
+func (c *Context) QueryInt(key string, defaultValue int) int {
+	val := c.Query(key)
+	if val == "" {
+		return defaultValue
+	}
+	parsed, err := strconv.Atoi(val)
+	if err != nil {
+		return defaultValue 
+	}
+	return parsed
+}
+
+// safely evaluates boolean query parameters ("true", "1", "yes")
+func (c *Context) QueryBool(key string) bool {
+	val := c.Query(key)
+	return val == "true" || val == "1" || val == "yes"
+}
+
+// S-Tags
+// Sends a raw HTML fragment back to the Spidey Client Engine
+func (c *Context) HTML(status int, htmlFragment string) {
+	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
+	c.Writer.WriteHeader(status)
+	c.Writer.Write([]byte(htmlFragment))
 }

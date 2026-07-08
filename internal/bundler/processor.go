@@ -311,22 +311,75 @@ func bundleFrontendAssets(projectDir string, globalStyles *strings.Builder, cfg 
 	// Write spidey-client.js bootstrapper
 	clientCode := `
 document.addEventListener("DOMContentLoaded", () => {
+	// --- Existing Island Logic ---
 	const islands = document.querySelectorAll("spidey-island");
 	islands.forEach(async (island) => {
 		const compName = island.getAttribute("data-component");
 		if (compName) {
 			try {
 				const module = await import("/assets/components/" + compName + ".js");
-				if (module.mount) {
-					module.mount(island);
-				}
+				if (module.mount) module.mount(island);
 			} catch (e) {
 				console.error("Spidey: Failed to load island", compName, e);
 			}
 		}
 	});
+
+	// --- NEW: SPIDEY S-TAGS ENGINE (Server-Side Reactivity) ---
+
+	// Handle s-post (Form submissions)
+	document.body.addEventListener("submit", async (e) => {
+		const form = e.target.closest("[s-post]");
+		if (!form) return;
+
+		e.preventDefault(); // Stop the page from reloading!
+		
+		const url = form.getAttribute("s-post");
+		const targetSelector = form.getAttribute("s-target");
+
+		try {
+			// Send the form data to Go
+			const response = await fetch(url, {
+				method: "POST",
+				body: new FormData(form)
+			});
+			const html = await response.text();
+			
+			// Magically swap the new HTML into the target element!
+			if (targetSelector) {
+				const targetEl = document.querySelector(targetSelector);
+				if (targetEl) targetEl.innerHTML = html;
+			}
+		} catch (err) {
+			console.error("Spidey Engine: s-post failed", err);
+		}
+	});
+
+	// Handle s-get (Button clicks / links)
+	document.body.addEventListener("click", async (e) => {
+		const btn = e.target.closest("[s-get]");
+		if (!btn) return;
+		
+		e.preventDefault(); // Stop the link/button from navigating
+		
+		const url = btn.getAttribute("s-get");
+		const targetSelector = btn.getAttribute("s-target");
+
+		try {
+			const response = await fetch(url);
+			const html = await response.text();
+			
+			if (targetSelector) {
+				const targetEl = document.querySelector(targetSelector);
+				if (targetEl) targetEl.innerHTML = html; 
+			}
+		} catch (err) {
+			console.error("Spidey Engine: s-get failed", err);
+		}
+	});
 });
 `
+
 	os.WriteFile(filepath.Join(projectDir, cfg.Directories.PublicDir, "assets", "spidey-client.js"), []byte(clientCode), 0644)
 
 	// esbuild components for islands
