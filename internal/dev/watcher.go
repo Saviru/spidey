@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"spidey/internal/bundler"
-	"spidey/internal/config"
+	"github.com/saviru/spidey/internal/bundler"
+	"github.com/saviru/spidey/internal/config"
 
 	"github.com/fsnotify/fsnotify"
 )
