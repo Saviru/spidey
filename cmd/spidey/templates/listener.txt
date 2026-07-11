@@ -31,7 +31,6 @@ func (a *App) Listen(port ...any) error {
 		addr = fmt.Sprintf(":%d", a.Config.Port)
 	}
 
-	// Attempt to claim the port from the Operating System
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		if strings.Contains(err.Error(), "address already in use") {
