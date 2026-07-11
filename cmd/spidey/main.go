@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/exec"
 
-	"spidey/internal/bundler"
-	"spidey/internal/config"
-	"spidey/internal/dev"
+	"github.com/saviru/spidey/internal/bundler"
+	"github.com/saviru/spidey/internal/config"
+	"github.com/saviru/spidey/internal/dev"
 )
 
 //go:embed templates/*

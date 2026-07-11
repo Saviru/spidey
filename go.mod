@@ -1,4 +1,4 @@
-module spidey
+module github.com/saviru/spidey
 
 go 1.26.1
 

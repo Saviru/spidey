@@ -4,7 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"spidey/internal/config"
+	"github.com/saviru/spidey/internal/config"
 )
 
 func CompileBinary(projectDir string, cfg *config.Config) error {

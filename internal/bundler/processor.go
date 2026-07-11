@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"spidey/internal/config"
-	"spidey/internal/parser"
+	"github.com/saviru/spidey/internal/config"
+	"github.com/saviru/spidey/internal/parser"
 	"strings"
 
 	"github.com/evanw/esbuild/pkg/api"
