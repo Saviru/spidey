@@ -82,6 +82,17 @@ func main() {
 			fmt.Printf("Export Error: %v\n", err)
 			os.Exit(1)
 		}
+	case "update":
+		fmt.Println("Downloading the latest version...")
+		cmd := exec.Command("go", "install", "github.com/saviru/spidey@latest")
+		cmd.Dir = currentDir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("Update Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Update successful!")
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
 	}
