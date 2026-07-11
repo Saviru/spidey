@@ -12,7 +12,6 @@ go install github.com/saviru/spidey/cmd/spidey@latest
 
 ```bash
 spidey init my-app
-cd my-app
 spidey dev
 ```
 
