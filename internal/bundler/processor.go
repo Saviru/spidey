@@ -8,9 +8,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+
 	"github.com/saviru/spidey/internal/config"
 	"github.com/saviru/spidey/internal/parser"
-	"strings"
 
 	"github.com/evanw/esbuild/pkg/api"
 )
@@ -71,7 +72,7 @@ func setupGeneratedDirectory(projectDir string, templates embed.FS) error {
 	return os.WriteFile(filepath.Join(genDir, "spidey_base.go"), []byte(baseCode), 0644)
 }
 
-func prepareAppLayout(projectDir string, liveReloadPort string) string {
+func prepareAppLayout(projectDir string, liveReloadPort string, usesAOT bool) string {
 	appLayoutStr := ""
 	appLayoutPath := filepath.Join(projectDir, "app.spidey")
 	if appLayoutBytes, err := os.ReadFile(appLayoutPath); err == nil {
@@ -104,6 +105,18 @@ func prepareAppLayout(projectDir string, liveReloadPort string) string {
 				appLayoutStr = strings.Replace(appLayoutStr, "</body>", script+"\n</body>", 1)
 			} else {
 				appLayoutStr += "\n" + script
+			}
+		}
+
+		// inhect aot js file
+		if usesAOT {
+			aotScript := `<script src="/assets/spidey-aot.js"></script>`
+			if !strings.Contains(appLayoutStr, aotScript) {
+				if strings.Contains(appLayoutStr, "</body>") {
+					appLayoutStr = strings.Replace(appLayoutStr, "</body>", aotScript+"\n</body>", 1)
+				} else {
+					appLayoutStr += "\n" + aotScript
+				}
 			}
 		}
 	}
@@ -141,7 +154,7 @@ func processComponents(projectDir string) (string, *strings.Builder) {
 		if err != nil {
 			return nil
 		}
-		
+
 		relPath, _ := filepath.Rel(pagesDir, path)
 		parts := strings.Split(filepath.ToSlash(relPath), "/")
 		isPrivate := false
@@ -348,7 +361,7 @@ func bundleFrontendAssets(projectDir string, globalStyles *strings.Builder, cfg 
 	// Write spidey-client.js bootstrapper
 	clientCode := `
 document.addEventListener("DOMContentLoaded", () => {
-	// --- Existing Island Logic ---
+	// Islands
 	const islands = document.querySelectorAll("spidey-island");
 	islands.forEach(async (island) => {
 		const compName = island.getAttribute("data-component");
@@ -362,14 +375,14 @@ document.addEventListener("DOMContentLoaded", () => {
 		}
 	});
 
-	// --- NEW: SPIDEY S-TAGS ENGINE (Server-Side Reactivity) ---
+	// SPIDEY S-TAGS ENGINE
 
 	// Handle s-post (Form submissions)
 	document.body.addEventListener("submit", async (e) => {
 		const form = e.target.closest("[s-post]");
 		if (!form) return;
 
-		e.preventDefault(); // Stop the page from reloading!
+		e.preventDefault(); // Stop the page from reloading
 		
 		const url = form.getAttribute("s-post");
 		const targetSelector = form.getAttribute("s-target");
@@ -382,7 +395,7 @@ document.addEventListener("DOMContentLoaded", () => {
 			});
 			const html = await response.text();
 			
-			// Magically swap the new HTML into the target element!
+			// swap the new HTML into the target element
 			if (targetSelector) {
 				const targetEl = document.querySelector(targetSelector);
 				if (targetEl) targetEl.innerHTML = html;
@@ -457,7 +470,9 @@ func ProcessPages(projectDir string, templates embed.FS, liveReloadPort string, 
 		return err
 	}
 
-	appLayoutStr := prepareAppLayout(projectDir, liveReloadPort)
+	usesAOT := hasAOTActions(projectDir)
+
+	appLayoutStr := prepareAppLayout(projectDir, liveReloadPort, usesAOT)
 	componentsStr, globalStyles := processComponents(projectDir)
 	apiRoutesStr, hasApiRoutes := generateAPIRoutes(projectDir)
 
@@ -478,7 +493,7 @@ func ProcessPages(projectDir string, templates embed.FS, liveReloadPort string, 
 func generateAOTID() string {
 	b := make([]byte, 4)
 	rand.Read(b)
-	return fmt.Sprintf("s-%x", b) //8-character ID
+	return fmt.Sprintf("s_%x", b) //8-character ID
 }
 
 func CompileAOT(htmlContent string, aotJSBuffer *strings.Builder) string {
@@ -500,4 +515,24 @@ func CompileAOT(htmlContent string, aotJSBuffer *strings.Builder) string {
 		return fmt.Sprintf(`id="%s"`, uniqueID)
 	})
 	return compiledHTML
+}
+
+func hasAOTActions(projectDir string) bool {
+	hasAOT := false
+	checkDir := func(dir string) {
+		filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+			if err == nil && !d.IsDir() && strings.HasSuffix(path, ".spidey") {
+				content, _ := os.ReadFile(path)
+				// Quick regex check to see if @event=" exists
+				if regexp.MustCompile(`@[a-z]+="[^"]+"`).Match(content) {
+					hasAOT = true
+				}
+			}
+			return nil
+		})
+	}
+
+	checkDir(filepath.Join(projectDir, "pages"))
+	checkDir(filepath.Join(projectDir, "components"))
+	return hasAOT
 }
