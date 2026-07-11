@@ -10,5 +10,5 @@ func main() {
 
 	pages.RegisterRoutes(app)
 
-	app.Listen(app.Config.Port)
+	app.Listen()
 }
