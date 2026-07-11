@@ -2,7 +2,7 @@
 
 Spidey is a blazing-fast, modern full-stack meta-framework written in Go. It enables seamless frontend and backend development with hybrid routing, server-side reactivity (S-Tags), scoped CSS, Islands architecture (partial hydration), API generation, and Static Site Generation (SSG).
 
-## ✨ Features
+## Features
 
 *   **Hybrid Routing:** Drop a `.spidey` file in `pages/` for an instant route, or use `pages/folder/index.spidey` for complex nested routes and layouts.
 *   **Colocated Components:** Prefix files or folders with an underscore (`_`) in your `pages/` directory to safely colocate private components right next to your routes.

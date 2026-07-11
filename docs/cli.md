@@ -25,3 +25,15 @@ Transpiles all `.spidey` pages into Go code, bundles frontend assets using esbui
 spidey export
 ```
 Transpiles pages and runs a temporary server to crawl and export all non-dynamic routes as static HTML files. The output is placed in the `out/` directory, making it ready for static hosting.
+
+## version (Aliases: -v, --version)
+```bash
+spidey version
+```
+Outputs the currently installed version of the Spidey CLI. This version number is automatically embedded based on the Git Tag you downloaded via `go install`.
+
+## update
+```bash
+spidey update
+```
+Automatically downloads and installs the latest version of the Spidey CLI directly from GitHub. Spidey also runs a fast, non-blocking check in the background when running other commands to notify you if a new version is available!

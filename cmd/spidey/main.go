@@ -91,7 +91,7 @@ func main() {
 		}
 	case "update":
 		fmt.Println("Downloading the latest version...")
-		cmd := exec.Command("go", "install", "github.com/saviru/spidey@latest")
+		cmd := exec.Command("go", "install", "github.com/saviru/spidey/cmd/spidey@latest")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
