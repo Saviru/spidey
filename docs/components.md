@@ -2,6 +2,19 @@
 
 Components are `.spidey` files placed inside the `components/` directory. They allow you to create reusable UI pieces.
 
+## Colocated Components (Private Components)
+
+While you can put all your components in the global `components/` directory, Spidey also supports placing components directly next to your pages (colocation).
+
+Any `.spidey` file or folder inside the `pages/` directory that starts with an underscore (`_`) is ignored by the router, but compiled as a component.
+
+```text
+pages/
+└── dashboard/
+    ├── index.spidey
+    └── _Chart.spidey   -> Can be used in index.spidey as <_Chart />
+```
+
 ## Using Components
 
 To use a component (e.g., `components/Button.spidey`), include it in your pages or other components using XML-like syntax:

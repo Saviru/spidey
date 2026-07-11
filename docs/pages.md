@@ -2,6 +2,31 @@
 
 Spidey uses file-based routing. Any `.spidey` file inside the `pages/` directory automatically becomes a route mapped to its filename.
 
+## Hybrid Routing (File & Folder Based)
+
+Spidey supports both file-based and folder-based routing seamlessly:
+*   **File-based:** `pages/about.spidey` becomes `/about`.
+*   **Folder-based:** `pages/about/index.spidey` also becomes `/about`.
+
+This gives you the flexibility to use a simple flat file structure for small pages, and transition to a folder-based structure when routes get more complex.
+
+## Private Files & Colocation
+
+When using folder-based routing, you might want to put components or helper files next to your page without them becoming public URLs. 
+
+Spidey ignores any file or folder in the `pages/` directory that starts with an underscore (`_`).
+
+```text
+pages/
+├── index.spidey              -> /
+└── dashboard/                -> /dashboard
+    ├── index.spidey          
+    └── _components/          -> Ignored by the router!
+        ├── Sidebar.spidey    
+        └── Chart.spidey      
+```
+These ignored `.spidey` files are still compiled as components and can be used inside your pages (e.g., `<_components/Sidebar />` or `{{ template "_components/Sidebar" . }}`).
+
 ## Basic Page and Go Frontmatter
 
 Spidey pages are not just static HTML; they are executed natively by Go. You can define Go data structures and backend logic at the top of your file using `---go ... ---` frontmatter.

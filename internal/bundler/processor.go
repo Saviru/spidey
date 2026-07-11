@@ -112,10 +112,11 @@ func prepareAppLayout(projectDir string, liveReloadPort string) string {
 
 func processComponents(projectDir string) (string, *strings.Builder) {
 	componentsDir := filepath.Join(projectDir, "components")
+	pagesDir := filepath.Join(projectDir, "pages")
 	var componentsBuilder strings.Builder
 	var globalStyles strings.Builder
 
-	filepath.WalkDir(componentsDir, func(path string, d fs.DirEntry, err error) error {
+	processFile := func(path string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() && strings.HasSuffix(path, ".spidey") {
 			content, _ := os.ReadFile(path)
 			name := strings.TrimSuffix(filepath.Base(path), ".spidey")
@@ -128,6 +129,31 @@ func processComponents(projectDir string) (string, *strings.Builder) {
 				// Wrap HTML in a Go template define block
 				componentsBuilder.WriteString(fmt.Sprintf("\n{{define \"%s\"}}\n%s\n{{end}}\n", name, parsed.HTML))
 			}
+		}
+		return nil
+	}
+
+	// 1. Process global components
+	filepath.WalkDir(componentsDir, processFile)
+
+	// 2. Process colocated components in pages directory (ignored by router)
+	filepath.WalkDir(pagesDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		
+		relPath, _ := filepath.Rel(pagesDir, path)
+		parts := strings.Split(filepath.ToSlash(relPath), "/")
+		isPrivate := false
+		for _, part := range parts {
+			if strings.HasPrefix(part, "_") {
+				isPrivate = true
+				break
+			}
+		}
+
+		if isPrivate {
+			return processFile(path, d, err)
 		}
 		return nil
 	})
@@ -217,6 +243,14 @@ func transpilePages(projectDir string, appLayoutStr string, componentsStr string
 	err := filepath.WalkDir(pagesDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+
+		// skip files or folders starting with "_"
+		if strings.HasPrefix(d.Name(), "_") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 
 		if !d.IsDir() {
