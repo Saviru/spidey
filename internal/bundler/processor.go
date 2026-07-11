@@ -89,7 +89,7 @@ func prepareAppLayout(projectDir string, liveReloadPort string, usesAOT bool) st
 		}
 
 		// Inject Client Bootstrapper for Islands
-		clientScript := `<script src="/assets/spidey-client.js" type="module"></script>`
+		clientScript := `<script src="/assets/spidey-client.js?v=2" type="module"></script>`
 		if !strings.Contains(appLayoutStr, clientScript) {
 			if strings.Contains(appLayoutStr, "</body>") {
 				appLayoutStr = strings.Replace(appLayoutStr, "</body>", clientScript+"\n</body>", 1)
@@ -386,6 +386,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		
 		const url = form.getAttribute("s-post");
 		const targetSelector = form.getAttribute("s-target");
+		const swapStyle = form.getAttribute("s-swap") || "innerHTML";
 
 		try {
 			// Send the form data to Go
@@ -398,7 +399,13 @@ document.addEventListener("DOMContentLoaded", () => {
 			// swap the new HTML into the target element
 			if (targetSelector) {
 				const targetEl = document.querySelector(targetSelector);
-				if (targetEl) targetEl.innerHTML = html;
+				if (targetEl) {
+					if (swapStyle === "outerHTML") {
+						targetEl.outerHTML = html;
+					} else {
+						targetEl.innerHTML = html;
+					}
+				}
 			}
 		} catch (err) {
 			console.error("Spidey Engine: s-post failed", err);
@@ -414,6 +421,7 @@ document.addEventListener("DOMContentLoaded", () => {
 		
 		const url = btn.getAttribute("s-get");
 		const targetSelector = btn.getAttribute("s-target");
+		const swapStyle = btn.getAttribute("s-swap") || "innerHTML";
 
 		try {
 			const response = await fetch(url);
@@ -421,7 +429,13 @@ document.addEventListener("DOMContentLoaded", () => {
 			
 			if (targetSelector) {
 				const targetEl = document.querySelector(targetSelector);
-				if (targetEl) targetEl.innerHTML = html; 
+				if (targetEl) {
+					if (swapStyle === "outerHTML") {
+						targetEl.outerHTML = html;
+					} else {
+						targetEl.innerHTML = html; 
+					}
+				}
 			}
 		} catch (err) {
 			console.error("Spidey Engine: s-get failed", err);
