@@ -1,4 +1,4 @@
-# Spidey
+# Spidey - Let's weave the web
 
 Spidey is a full-stack meta-framework written in Go. It enables seamless frontend and backend development with built-in routing, components, styling, API generation, and Static Site Generation (SSG).
 
@@ -31,3 +31,11 @@ Full documentation is available in the docs/ directory:
 ## License
 
 MIT License.
+
+```Copyright (c) 2025 Saviru Kashmira Atapattu```
+
+
+<br>
+<br>
+<hr>
+<p align="center">Made with ❤️ for the web development community</p>
