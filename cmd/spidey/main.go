@@ -2,10 +2,13 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"runtime/debug"
+	"time"
 
 	"github.com/saviru/spidey/internal/bundler"
 	"github.com/saviru/spidey/internal/config"
@@ -17,12 +20,16 @@ var starterTemplates embed.FS
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: spidey [init|dev|build|version]")
+		fmt.Println("Usage: spidey [init|dev|build|version|update]")
 		os.Exit(1)
 	}
 
 	command := os.Args[1]
 	currentDir, _ := os.Getwd()
+
+	if command != "version" && command != "update" {
+		go checkLatestVersion()
+	}
 
 	switch command {
 	case "version", "-v", "--version":
@@ -85,7 +92,6 @@ func main() {
 	case "update":
 		fmt.Println("Downloading the latest version...")
 		cmd := exec.Command("go", "install", "github.com/saviru/spidey@latest")
-		cmd.Dir = currentDir
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -95,5 +101,33 @@ func main() {
 		fmt.Println("Update successful!")
 	default:
 		fmt.Printf("Unknown command: %s\n", command)
+	}
+}
+
+func checkLatestVersion() {
+	// Get current version
+	info, ok := debug.ReadBuildInfo()
+	if !ok || info.Main.Version == "" || info.Main.Version == "(devel)" {
+		return
+	}
+	currentVersion := info.Main.Version
+
+	client := http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get("https://api.github.com/repos/saviru/spidey/releases/latest")
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return
+	}
+
+	if release.TagName != "" && release.TagName != currentVersion {
+		fmt.Printf("\nA new version of Spidey is available! (%s -> %s)\n", currentVersion, release.TagName)
+		fmt.Println("Run 'spidey update' to upgrade instantly.\n")
 	}
 }
