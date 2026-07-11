@@ -1,0 +1,14 @@
+package main
+
+import (
+	"%s/hub/pages"
+	"%s/hub/router"
+)
+
+func main() {
+	app := router.New()
+
+	pages.RegisterRoutes(app)
+
+	app.Listen()
+}
