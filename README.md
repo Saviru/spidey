@@ -49,8 +49,6 @@ MIT License.
 
 ```Copyright (c) 2025 Saviru Kashmira Atapattu```
 
-
-<br>
 <br>
 <hr>
 <p align="center">Made with ❤️ for the web development community</p>
