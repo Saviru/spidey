@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime/debug"
 
 	"github.com/saviru/spidey/internal/bundler"
 	"github.com/saviru/spidey/internal/config"
@@ -16,7 +17,7 @@ var starterTemplates embed.FS
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: spidey [init|dev|build]")
+		fmt.Println("Usage: spidey [init|dev|build|version]")
 		os.Exit(1)
 	}
 
@@ -24,6 +25,13 @@ func main() {
 	currentDir, _ := os.Getwd()
 
 	switch command {
+	case "version", "-v", "--version":
+		info, ok := debug.ReadBuildInfo()
+		if ok && info.Main.Version != "" {
+			fmt.Printf("Spidey CLI %s\n", info.Main.Version)
+		} else {
+			fmt.Println("Spidey CLI (development build)")
+		}
 	case "init", "hatch":
 		var projectName string
 		if len(os.Args) > 2 {
