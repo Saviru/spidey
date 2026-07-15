@@ -8,14 +8,16 @@ import (
 )
 
 type SpideyClaims struct {
-	UserID string `json:"user_id"`
+	UserID string                 `json:"user_id"`
+	Data   map[string]interface{} `json:"data,omitempty"`
 	jwt.RegisteredClaims
 }
 
 // creates new signed JWT.
-func GenerateToken(userID string, secretKey []byte, duration time.Duration) (string, error) {
+func GenerateToken(userID string, data map[string]interface{}, secretKey []byte, duration time.Duration) (string, error) {
 	claims := SpideyClaims{
 		UserID: userID,
+		Data:   data,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
