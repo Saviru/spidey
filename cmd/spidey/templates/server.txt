@@ -2,11 +2,11 @@ package main
 
 import (
 	"%s/hub/pages"
-	"github.com/saviru/spidey/pkg/router"
+	"github.com/saviru/spidey/pkg/core"
 )
 
 func main() {
-	app := router.New()
+	app := core.New()
 
 	pages.RegisterRoutes(app)
 

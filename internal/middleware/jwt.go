@@ -5,14 +5,14 @@ import (
 	"strings"
 
 	"github.com/saviru/spidey/internal/auth"
-	"github.com/saviru/spidey/pkg/router"
+	"github.com/saviru/spidey/pkg/core"
 )
 
 const UserIDKey = "user_id"
 
 // RequireJWT is a native Spidey middleware
-func RequireJWT(secretKey []byte) router.Middleware {
-	return func(c *router.Context, next func()) {
+func RequireJWT(secretKey []byte) core.Middleware {
+	return func(c *core.Context, next func()) {
 		// 1. Extract the Authorization header
 		authHeader := c.Request.Header.Get("Authorization")
 		if authHeader == "" {
