@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/saviru/spidey/internal/auth"
+	"github.com/saviru/spidey/pkg/auth"
 	"github.com/saviru/spidey/pkg/core"
 )
 
