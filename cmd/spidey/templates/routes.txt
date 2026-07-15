@@ -3,7 +3,7 @@
 package pages
 
 import (
-	"%s/hub/router"
+	"github.com/saviru/spidey/pkg/router"
 )
 
 func RegisterRoutes(app *router.App) {

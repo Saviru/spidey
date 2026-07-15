@@ -40,47 +40,8 @@ func initProject(projectName string) {
 	}
 
 	os.MkdirAll("hub/pages", 0755)
-	os.MkdirAll("hub/router", 0755)
 
-	// hub/router/router.go
-	routerCodeBytes, err := starterTemplates.ReadFile("templates/router.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/router.go", routerCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject router.")
-	}
 
-	// hub/router/config.go
-	configCodeBytes, err := starterTemplates.ReadFile("templates/config.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/config.go", configCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject config structs.")
-	}
-
-	// hub/router/export.go
-	exportCodeBytes, err := starterTemplates.ReadFile("templates/export.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/export.go", exportCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject export logic.")
-	}
-
-	// hub/router/listener.go
-	listenerCodeBytes, err := starterTemplates.ReadFile("templates/listener.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/listener.go", listenerCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject listener logic.")
-	}
-
-	// hub/router/context.go
-	contextCodeBytes, err := starterTemplates.ReadFile("templates/context.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/context.go", contextCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject context.")
-	}
 
 	// hub/pages/base.go
 	baseCodeBytes, err := starterTemplates.ReadFile("templates/base.go")
