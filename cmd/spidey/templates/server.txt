@@ -10,5 +10,7 @@ func main() {
 
 	pages.RegisterRoutes(app)
 
+	app.Static("/assets/", "public/assets")
+
 	app.Listen()
 }

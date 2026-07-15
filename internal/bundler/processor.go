@@ -146,10 +146,10 @@ func processComponents(projectDir string) (string, *strings.Builder) {
 		return nil
 	}
 
-	// 1. Process global components
+	// Process global components
 	filepath.WalkDir(componentsDir, processFile)
 
-	// 2. Process colocated components in pages directory (ignored by router)
+	// Process colocated components in pages directory (ignored by router)
 	filepath.WalkDir(pagesDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
