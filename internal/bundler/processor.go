@@ -376,71 +376,103 @@ document.addEventListener("DOMContentLoaded", () => {
 	});
 
 	// SPIDEY S-TAGS ENGINE
+	window.spideyProcessElement = function(el) {
+		if (el._spidey_processed) return;
+		el._spidey_processed = true;
 
-	// Handle s-post (Form submissions)
-	document.body.addEventListener("submit", async (e) => {
-		const form = e.target.closest("[s-post]");
-		if (!form) return;
+		let isPost = el.hasAttribute("s-post");
+		let isGet = el.hasAttribute("s-get");
+		if (!isPost && !isGet) return;
 
-		e.preventDefault(); // Stop the page from reloading
-		
-		const url = form.getAttribute("s-post");
-		const targetSelector = form.getAttribute("s-target");
-		const swapStyle = form.getAttribute("s-swap") || "innerHTML";
+		let trigger = el.getAttribute("s-trigger");
+		if (!trigger) {
+			trigger = isPost ? "submit" : "click";
+		}
 
-		try {
-			// Send the form data to Go
-			const response = await fetch(url, {
-				method: "POST",
-				body: new FormData(form)
+		let url = isPost ? el.getAttribute("s-post") : el.getAttribute("s-get");
+		let triggerParts = trigger.split(" ");
+		let eventName = triggerParts[0];
+		let delay = 0;
+		let every = 0;
+
+		for (let part of triggerParts.slice(1)) {
+			if (part.startsWith("delay:")) {
+				delay = parseInt(part.split(":")[1].replace(/[^0-9]/g, '')) || 0;
+			} else if (part.startsWith("every:")) {
+				every = parseInt(part.split(":")[1].replace(/[^0-9]/g, '')) || 0;
+			}
+		}
+
+		const execute = async (e) => {
+			if (e && typeof e.preventDefault === 'function') e.preventDefault();
+			
+			const targetSelector = el.getAttribute("s-target");
+			const swapStyle = el.getAttribute("s-swap") || "innerHTML";
+			
+			try {
+				let options = {};
+				if (isPost) {
+					options.method = "POST";
+					if (el.tagName === "FORM") {
+						options.body = new FormData(el);
+					} else {
+						const form = el.closest("form");
+						if (form) options.body = new FormData(form);
+					}
+				}
+				
+				// Handle URL parameters (e.g. for search inputs on s-get)
+				let finalUrl = url;
+				if (isGet && el.tagName === "INPUT" && el.name) {
+					const paramChar = finalUrl.includes("?") ? "&" : "?";
+					finalUrl += paramChar + encodeURIComponent(el.name) + "=" + encodeURIComponent(el.value);
+				}
+
+				const response = await fetch(finalUrl, options);
+				const html = await response.text();
+				
+				if (targetSelector) {
+					const targetEl = document.querySelector(targetSelector);
+					if (targetEl) {
+						if (swapStyle === "outerHTML") {
+							targetEl.outerHTML = html;
+						} else {
+							targetEl.innerHTML = html;
+						}
+						// Scan for new elements in the document
+						document.querySelectorAll("[s-get], [s-post]").forEach(window.spideyProcessElement);
+					}
+				}
+			} catch (err) {
+				console.error("Spidey Engine: request failed", err);
+			}
+		};
+
+		if (eventName === "intersect") {
+			let observer = new IntersectionObserver((entries) => {
+				if (entries[0].isIntersecting) {
+					execute();
+				}
 			});
-			const html = await response.text();
-			
-			// swap the new HTML into the target element
-			if (targetSelector) {
-				const targetEl = document.querySelector(targetSelector);
-				if (targetEl) {
-					if (swapStyle === "outerHTML") {
-						targetEl.outerHTML = html;
-					} else {
-						targetEl.innerHTML = html;
-					}
+			observer.observe(el);
+		} else if (eventName === "every") {
+			execute();
+			setInterval(execute, every || parseInt(triggerParts[0].split(":")[1].replace(/[^0-9]/g, '')) || 1000);
+		} else {
+			let timeout;
+			el.addEventListener(eventName, (e) => {
+				if (delay > 0) {
+					clearTimeout(timeout);
+					timeout = setTimeout(() => execute(e), delay);
+				} else {
+					execute(e);
 				}
-			}
-		} catch (err) {
-			console.error("Spidey Engine: s-post failed", err);
+			});
 		}
-	});
+	};
 
-	// Handle s-get (Button clicks / links)
-	document.body.addEventListener("click", async (e) => {
-		const btn = e.target.closest("[s-get]");
-		if (!btn) return;
-		
-		e.preventDefault(); // Stop the link/button from navigating
-		
-		const url = btn.getAttribute("s-get");
-		const targetSelector = btn.getAttribute("s-target");
-		const swapStyle = btn.getAttribute("s-swap") || "innerHTML";
-
-		try {
-			const response = await fetch(url);
-			const html = await response.text();
-			
-			if (targetSelector) {
-				const targetEl = document.querySelector(targetSelector);
-				if (targetEl) {
-					if (swapStyle === "outerHTML") {
-						targetEl.outerHTML = html;
-					} else {
-						targetEl.innerHTML = html; 
-					}
-				}
-			}
-		} catch (err) {
-			console.error("Spidey Engine: s-get failed", err);
-		}
-	});
+	// Initialize all elements on load
+	document.querySelectorAll("[s-get], [s-post]").forEach(window.spideyProcessElement);
 });
 `
 
