@@ -9,23 +9,29 @@ import (
 	"github.com/saviru/spidey/pkg/core"
 )
 
-const UserIDKey = "user_id"
+func extractToken(r *http.Request) string {
+	authHeader := r.Header.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		return strings.TrimPrefix(authHeader, "Bearer ")
+	}
 
+	// Cookie
+	if cookie, err := r.Cookie("jwt"); err == nil {
+		return cookie.Value
+	}
+
+	return r.URL.Query().Get("token")
+}
+
+// Validates a JWT token using a static secret key.
+// Extracts the token from the Authorization header, a "jwt" cookie, or a "token" query string.
 func RequireJWT(secretKey []byte) core.Middleware {
 	return func(c *core.Context, next func()) {
-		authHeader := c.Request.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(c.Writer, "Missing Authorization header", http.StatusUnauthorized)
+		tokenString := extractToken(c.Request)
+		if tokenString == "" {
+			http.Error(c.Writer, "Missing or invalid token", http.StatusUnauthorized)
 			return
 		}
-
-		// Ensure it's a Bearer token
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			http.Error(c.Writer, "Invalid Authorization header format", http.StatusUnauthorized)
-			return
-		}
-		tokenString := parts[1]
 
 		claims, err := auth.ValidateToken(tokenString, secretKey)
 		if err != nil {
@@ -44,18 +50,11 @@ func RequireJWT(secretKey []byte) core.Middleware {
 // Useful for Key Rotation, where the secret key is determined by the token's "kid" header.
 func RequireJWTDynamic(keyFunc jwt.Keyfunc) core.Middleware {
 	return func(c *core.Context, next func()) {
-		authHeader := c.Request.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(c.Writer, "Missing Authorization header", http.StatusUnauthorized)
+		tokenString := extractToken(c.Request)
+		if tokenString == "" {
+			http.Error(c.Writer, "Missing or invalid token", http.StatusUnauthorized)
 			return
 		}
-
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			http.Error(c.Writer, "Invalid Authorization header format", http.StatusUnauthorized)
-			return
-		}
-		tokenString := parts[1]
 
 		claims, err := auth.ValidateTokenDynamic(tokenString, keyFunc)
 		if err != nil {
