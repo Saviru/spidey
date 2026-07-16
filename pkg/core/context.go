@@ -3,10 +3,11 @@
 package core
 
 import (
-	json "github.com/goccy/go-json"
 	"net/http"
 	"net/url"
-	"strconv" 
+	"strconv"
+
+	json "github.com/goccy/go-json"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -14,9 +15,35 @@ import (
 var validate = validator.New()
 
 type Context struct {
-	Writer  http.ResponseWriter
-	Request *http.Request
+	Writer     http.ResponseWriter
+	Request    *http.Request
 	queryCache url.Values
+	Keys       map[string]any
+}
+
+// Stores a new key/value pair exclusively for this context
+func (c *Context) Set(key string, value any) {
+	if c.Keys == nil {
+		c.Keys = make(map[string]any)
+	}
+	c.Keys[key] = value
+}
+
+// Returns the value for the given key (value, true)
+// If value does not exist it returns (nil, false)
+func (c *Context) Get(key string) (value any, exists bool) {
+	if c.Keys != nil {
+		value, exists = c.Keys[key]
+	}
+	return
+}
+
+// Returns the value for the given key if it exists, otherwise it panics
+func (c *Context) MustGet(key string) any {
+	if value, exists := c.Get(key); exists {
+		return value
+	}
+	panic("Key \"" + key + "\" does not exist in context")
 }
 
 // JSON
@@ -84,7 +111,7 @@ func (c *Context) JSONP(status int, data interface{}, callback string) {
 	c.Writer.Write([]byte(");"))
 }
 
-//Query
+// Query
 // Parses the URL once and caches it for all future calls
 func (c *Context) getQueryCache() url.Values {
 	if c.queryCache == nil {
@@ -115,7 +142,7 @@ func (c *Context) QueryInt(key string, defaultValue int) int {
 	}
 	parsed, err := strconv.Atoi(val)
 	if err != nil {
-		return defaultValue 
+		return defaultValue
 	}
 	return parsed
 }

@@ -32,8 +32,8 @@ func RequireJWT(secretKey []byte) core.Middleware {
 			return
 		}
 
-		// Inject the UserID into the request context
-		c.Request.Header.Set("X-User-ID", claims.UserID)
+		// Inject the entire claims struct into the request context
+		c.Set("user", claims)
 
 		next()
 	}
