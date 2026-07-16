@@ -4,7 +4,7 @@ Spidey's `hub/router` package provides a robust routing and context engine. It n
 
 ## The Context Object
 
-The `router.Context` provides various helpers for handling requests and generating responses quickly.
+The `core.Context` provides various helpers for handling requests and generating responses quickly.
 
 ### Sending Responses
 
@@ -25,12 +25,19 @@ The `router.Context` provides various helpers for handling requests and generati
 - `c.QueryInt("key", default)`: Safely auto-converts a query parameter into an integer.
 - `c.QueryBool("key")`: Safely evaluates boolean query parameters (recognizes `"true"`, `"1"`, or `"yes"`).
 
+### Context Storage (Injection)
+
+You can pass data between middlewares and route handlers using the built-in context storage mechanisms.
+- `c.Set("key", value)`: Stores a key-value pair in the context (often used by authentication middlewares).
+- `c.Get("key") (any, bool)`: Retrieves a value from the context, returning a boolean indicating if it exists.
+- `c.MustGet("key") any`: Retrieves a value from the context, panicking if it does not exist.
+
 ## Routing and Groups
 
 You can define routes and group them with shared prefixes and middlewares. Spidey supports all standard HTTP methods: `GET`, `POST`, `PUT`, `DELETE`, `PATCH`, `HEAD`, `OPTIONS`, `CONNECT`, `TRACE`, and `ANY`.
 
 ```go
-app.GET("/health", func(c *router.Context) {
+app.GET("/health", func(c *core.Context) {
     c.Send("OK")
 })
 
@@ -42,9 +49,9 @@ api.POST("/login", LoginHandler)
 
 Middlewares can be applied globally, to route groups, or to specific routes. Spidey's custom router natively supports three types of middleware formats:
 
-1. **Spidey Middleware**: `func(*router.Context, func())`
+1. **Spidey Middleware**: `func(*core.Context, func())`
 2. **Standard Go Middleware**: `func(http.Handler) http.Handler`
-3. **Standard Handlers**: `func(*router.Context)`
+3. **Standard Handlers**: `func(*core.Context)`
 
 Spidey automatically wraps standard Go middlewares using the `router.WrapStd()` function, allowing you to use existing ecosystem middlewares out-of-the-box!
 

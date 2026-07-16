@@ -11,10 +11,10 @@ To define a route, use the `//spidey:route` directive followed by the HTTP Metho
 ```go
 package api
 
-import "spideyapp/hub/router"
+import "github.com/saviru/spidey/pkg/core"
 
 //spidey:route GET /users
-func GetUsers(c *router.Context) {
+func GetUsers(c *core.Context) {
     c.JSON(200, map[string]string{"status": "ok"})
 }
 ```
@@ -27,9 +27,49 @@ You can attach middlewares specifically to an API route using the `//spidey:midd
 //spidey:middleware AuthCheck
 //spidey:middleware RateLimiter
 //spidey:route POST /users
-func CreateUser(c *router.Context) {
+func CreateUser(c *core.Context) {
     // Both AuthCheck and RateLimiter will run before CreateUser
 }
+```
+
+## Built-In JWT Authentication
+
+Spidey comes with a robust, built-in JWT (JSON Web Token) authentication package out-of-the-box (`github.com/saviru/spidey/pkg/auth` and `pkg/middleware`).
+
+### Generating Tokens
+```go
+import "github.com/saviru/spidey/pkg/auth"
+
+token, err := auth.GenerateToken(userId, []byte("my-secret-key"), time.Hour * 24)
+```
+
+### Dynamic Secret Keys
+For high-security environments, you can use dynamic secret keys (Key Rotation) based on a Key ID (`kid`) in the JWT header:
+```go
+// Generates a token with a custom Key ID
+token, err := auth.GenerateTokenDynamic(userId, "key-2026", []byte("dynamic-secret"), time.Hour)
+```
+
+### JWT Middleware
+You can protect your API routes using the provided JWT middleware, which automatically extracts the token from the `Authorization` header, a `jwt` cookie, or a `token` URL query parameter.
+
+```go
+import "github.com/saviru/spidey/pkg/middleware"
+
+//spidey:middleware middleware.RequireJWT([]byte("my-secret-key"))
+//spidey:route GET /protected
+func ProtectedEndpoint(c *core.Context) {
+    // Route is secured!
+}
+```
+
+For dynamic keys, use `RequireJWTDynamic`:
+```go
+middleware.RequireJWTDynamic(func(token *jwt.Token) (interface{}, error) {
+    // Return the correct secret key based on the token's kid
+    kid := token.Header["kid"].(string)
+    return fetchSecretFromDB(kid), nil
+})
 ```
 
 *Note: The middleware functions (`AuthCheck`, `RateLimiter`) must be defined and exported in the `api/` package.*
@@ -40,7 +80,7 @@ You can define dynamic path parameters directly in your API comments using the b
 
 ```go
 //spidey:route GET /users/[id]
-func GetUser(c *router.Context) {
+func GetUser(c *core.Context) {
     userID := c.Param("id")
     c.JSON(200, map[string]string{"user_id": userID})
 }

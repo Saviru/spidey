@@ -69,9 +69,15 @@ The root layout of the entire application is `app.spidey` at the project root. T
 
 Spidey provides built-in attributes (S-Tags) for server-side reactivity, heavily inspired by HTMX, allowing you to build dynamic UIs without writing JavaScript:
 
-- `s-get="url"`: Fetches HTML from the URL on click.
+- `s-get="url"`: Fetches HTML from the URL on click (or specified trigger).
 - `s-post="url"`: Submits a form via POST (prevents default reload).
 - `s-target="selector"`: The CSS selector of the element to replace with the response HTML.
+- `s-swap="style"`: How to swap the content (`innerHTML` by default, or `outerHTML`).
+- `s-trigger="event"`: Overrides the default trigger (`click` or `submit`). Supports modifiers:
+  - Custom events: `s-trigger="keyup"`, `s-trigger="change"`, etc.
+  - Debouncing: `s-trigger="keyup delay:500ms"` (waits 500ms after the last keystroke).
+  - Polling: `s-trigger="every:5s"` (fetches data every 5 seconds).
+  - Lazy Loading: `s-trigger="intersect"` (fetches when the element scrolls into view).
 
 Example:
 ```html
