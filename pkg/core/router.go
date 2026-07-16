@@ -165,6 +165,14 @@ func (g *RouterGroup) Proxy(path string, targetURL string) {
 		panic("invalid target URL for proxy: " + targetURL)
 	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
+	
+	// Override the Director to rewrite the Host header, 
+	// preventing 403 Forbidden errors from Cloudflare/external APIs.
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Host = target.Host
+	}
 
 	fullPath := g.prefix + path
 	if !strings.HasSuffix(fullPath, "/") {

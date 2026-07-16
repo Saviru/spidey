@@ -71,7 +71,7 @@ func initProject(projectName string) {
 	apiMainCodeBytes, err := starterTemplates.ReadFile("templates/server.txt")
 	if err == nil {
 		apiMainCodeTpl := string(apiMainCodeBytes)
-		apiMainCode := fmt.Sprintf(apiMainCodeTpl, projectName, projectName)
+		apiMainCode := fmt.Sprintf(apiMainCodeTpl, projectName)
 		createFileIfNotExists("api/main.go", []byte(apiMainCode))
 	} else {
 		fmt.Println("Warning: Failed to create api/main.go file.")
