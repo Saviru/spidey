@@ -361,6 +361,43 @@ func bundleFrontendAssets(projectDir string, globalStyles *strings.Builder, cfg 
 	// Write spidey-client.js bootstrapper
 	clientCode := `
 document.addEventListener("DOMContentLoaded", () => {
+	// Inject default built-in transitions
+	const style = document.createElement('style');
+	style.textContent = ` + "`" + `
+		/* Disable default mix-blend-mode which causes text vibration during crossfades */
+		::view-transition-image-pair(spidey-fade), ::view-transition-image-pair(spidey-slide-up), 
+		::view-transition-image-pair(spidey-slide-down), ::view-transition-image-pair(spidey-scale) {
+			isolation: auto;
+		}
+		::view-transition-old(spidey-fade), ::view-transition-new(spidey-fade),
+		::view-transition-old(spidey-slide-up), ::view-transition-new(spidey-slide-up),
+		::view-transition-old(spidey-slide-down), ::view-transition-new(spidey-slide-down),
+		::view-transition-old(spidey-scale), ::view-transition-new(spidey-scale) {
+			mix-blend-mode: normal;
+		}
+
+		::view-transition-old(spidey-fade) { animation: fade-out 0.8s linear both; }
+		::view-transition-new(spidey-fade) { animation: fade-in 0.8s linear both; }
+		@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+		@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+		::view-transition-old(spidey-slide-up) { animation: slide-up-out 0.8s ease-in both; }
+		::view-transition-new(spidey-slide-up) { animation: slide-up-in 0.8s ease-out both; }
+		@keyframes slide-up-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+		@keyframes slide-up-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
+		
+		::view-transition-old(spidey-slide-down) { animation: slide-down-out 0.8s ease-in both; }
+		::view-transition-new(spidey-slide-down) { animation: slide-down-in 0.8s ease-out both; }
+		@keyframes slide-down-in { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+		@keyframes slide-down-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(20px); } }
+
+		::view-transition-old(spidey-scale) { animation: scale-out 0.8s ease-in both; }
+		::view-transition-new(spidey-scale) { animation: scale-in 0.8s ease-out both; }
+		@keyframes scale-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+		@keyframes scale-out { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.05); } }
+	` + "`" + `;
+	document.head.appendChild(style);
+
 	// Islands
 	const islands = document.querySelectorAll("spidey-island");
 	islands.forEach(async (island) => {
@@ -434,13 +471,38 @@ document.addEventListener("DOMContentLoaded", () => {
 				if (targetSelector) {
 					const targetEl = document.querySelector(targetSelector);
 					if (targetEl) {
-						if (swapStyle === "outerHTML") {
-							targetEl.outerHTML = html;
+						const applySwap = () => {
+							if (swapStyle === "outerHTML") {
+								targetEl.outerHTML = html;
+							} else {
+								targetEl.innerHTML = html;
+							}
+							document.querySelectorAll("[s-get], [s-post]").forEach(window.spideyProcessElement);
+						};
+
+						const transitionName = el.getAttribute("@transition") || el.getAttribute("s-transition");
+						if (transitionName && document.startViewTransition) {
+							// Determine the view-transition-name to use
+							let activeName = transitionName;
+							if (activeName === "true" || activeName === "") {
+								activeName = "spidey-fade"; // default smooth fade
+							}
+							
+							targetEl.style.viewTransitionName = activeName;
+							
+							// Force browser to recalculate styles so the transition name is captured
+							void targetEl.offsetWidth;
+							
+							const transition = document.startViewTransition(() => {
+								applySwap();
+							});
+							
+							transition.finished.finally(() => {
+								targetEl.style.viewTransitionName = "";
+							});
 						} else {
-							targetEl.innerHTML = html;
+							applySwap();
 						}
-						// Scan for new elements in the document
-						document.querySelectorAll("[s-get], [s-post]").forEach(window.spideyProcessElement);
 					}
 				}
 			} catch (err) {
@@ -548,6 +610,12 @@ func CompileAOT(htmlContent string, aotJSBuffer *strings.Builder) string {
 		matches := re.FindStringSubmatch(match)
 		eventName := matches[1]
 		expression := matches[2]
+		
+		// Ignore @transition as it is used for View Transitions, not AOT events
+		if eventName == "transition" {
+			return match
+		}
+
 		uniqueID := generateAOTID()
 		jsCode := fmt.Sprintf(`
 	const el_%s = document.getElementById('%s');
@@ -569,9 +637,12 @@ func hasAOTActions(projectDir string) bool {
 		filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 			if err == nil && !d.IsDir() && strings.HasSuffix(path, ".spidey") {
 				content, _ := os.ReadFile(path)
-				// Quick regex check to see if @event=" exists
-				if regexp.MustCompile(`@[a-z]+="[^"]+"`).Match(content) {
-					hasAOT = true
+				matches := regexp.MustCompile(`@([a-z]+)="[^"]+"`).FindAllStringSubmatch(string(content), -1)
+				for _, match := range matches {
+					if match[1] != "transition" {
+						hasAOT = true
+						break
+					}
 				}
 			}
 			return nil

@@ -78,6 +78,9 @@ Spidey provides built-in attributes (S-Tags) for server-side reactivity, heavily
   - Debouncing: `s-trigger="keyup delay:500ms"` (waits 500ms after the last keystroke).
   - Polling: `s-trigger="every:5s"` (fetches data every 5 seconds).
   - Lazy Loading: `s-trigger="intersect"` (fetches when the element scrolls into view).
+- `@transition="name"` or `s-transition="name"`: Uses the native browser View Transitions API to seamlessly animate the DOM swap. 
+  - **Built-in Animations**: Set the name to `spidey-fade`, `spidey-slide-up`, `spidey-slide-down`, or `spidey-scale` for ready-to-use smooth animations! If set to `true`, it defaults to `spidey-fade`.
+  - **Custom Animations**: If given a custom name (e.g. `slide-fade`), you can write your own CSS animations using `::view-transition-old(slide-fade)` and `::view-transition-new(slide-fade)`. *Tip: To prevent text from "vibrating" during custom animations, add `mix-blend-mode: normal;` to your pseudo-elements!*
 
 Example:
 ```html
