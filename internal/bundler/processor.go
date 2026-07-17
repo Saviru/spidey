@@ -502,14 +502,31 @@ document.addEventListener("DOMContentLoaded", () => {
 					html = await response.text();
 				}
 				
+				// OOB Swaps Parsing
+				const parser = new DOMParser();
+				const doc = parser.parseFromString(html, "text/html");
+				
+				doc.querySelectorAll('[s-swap-oob]').forEach(oobEl => {
+					const oobId = oobEl.getAttribute('id');
+					if (oobId) {
+						const existingEl = document.getElementById(oobId);
+						if (existingEl) {
+							existingEl.outerHTML = oobEl.outerHTML;
+						}
+					}
+					oobEl.remove(); // Remove from temporary DOM so it doesn't go into main target
+				});
+				
+				const remainingHtml = doc.body.innerHTML;
+
 				if (targetSelector) {
 					const targetEl = document.querySelector(targetSelector);
 					if (targetEl) {
 						const applySwap = () => {
 							if (swapStyle === "outerHTML") {
-								targetEl.outerHTML = html;
+								targetEl.outerHTML = remainingHtml;
 							} else {
-								targetEl.innerHTML = html;
+								targetEl.innerHTML = remainingHtml;
 							}
 							document.querySelectorAll("[s-get], [s-post]").forEach(window.spideyProcessElement);
 						};
@@ -644,7 +661,7 @@ func CompileAOT(htmlContent string, aotJSBuffer *strings.Builder) string {
 		matches := re.FindStringSubmatch(match)
 		eventName := matches[1]
 		expression := matches[2]
-		
+
 		// Ignore @transition and @prefetch as they are built-in Spidey directives, not AOT events
 		if eventName == "transition" || eventName == "prefetch" {
 			return match
