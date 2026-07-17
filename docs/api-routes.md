@@ -34,6 +34,36 @@ func CreateUser(c *core.Context) {
 
 *Note: The middleware functions (`AuthCheck`, `RateLimiter`) must be defined and exported in the `api/` package.*
 
+## Global Middlewares & CORS
+
+Some middlewares, like Cross-Origin Resource Sharing (CORS), need to intercept requests *before* the router matches them to a specific route. For example, browsers send `OPTIONS` preflight requests that would otherwise be rejected.
+
+You can apply standard Go middlewares globally to your entire application using `app.UseGlobal()` in your `main.go`. Spidey includes a built-in CORS middleware for this purpose.
+
+```go
+package main
+
+import (
+    "github.com/saviru/spidey/pkg/core"
+    "github.com/saviru/spidey/pkg/middleware"
+)
+
+func main() {
+    app := core.New()
+
+    // Enable CORS globally
+    app.UseGlobal(middleware.CORS(middleware.CORSConfig{
+        AllowOrigins:     []string{"*"}, // Or specific domains: {"https://example.com"}
+        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Content-Type", "Authorization"},
+        AllowCredentials: true,
+        MaxAge:           86400, // 24 hours caching for preflight requests
+    }))
+
+    app.Listen()
+}
+```
+
 ## Dynamic Parameters
 
 

@@ -40,5 +40,12 @@ func (a *App) Listen(port ...any) error {
 	}
 
 	fmt.Printf("Spidey is running on http://localhost%s\n", addr)
-	return http.Serve(listener, a.mux)
+
+	// Apply global middlewares in reverse order so they execute correctly (first added = outermost wrapper)
+	var finalHandler http.Handler = a.mux
+	for i := len(a.globalMiddlewares) - 1; i >= 0; i-- {
+		finalHandler = a.globalMiddlewares[i](finalHandler)
+	}
+
+	return http.Serve(listener, finalHandler)
 }

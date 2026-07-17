@@ -160,3 +160,22 @@ func (c *Context) HTML(status int, htmlFragment string) {
 	c.Writer.WriteHeader(status)
 	c.Writer.Write([]byte(htmlFragment))
 }
+
+// Redirect sends an HTTP redirect to the specified URL (302 Found)
+func (c *Context) Redirect(url string) {
+	http.Redirect(c.Writer, c.Request, url, http.StatusFound)
+}
+
+// Cookie returns the value of the named cookie provided in the request
+func (c *Context) Cookie(name string) (string, error) {
+	cookie, err := c.Request.Cookie(name)
+	if err != nil {
+		return "", err
+	}
+	return cookie.Value, nil
+}
+
+// SetCookie adds a Set-Cookie header to the ResponseWriter
+func (c *Context) SetCookie(cookie *http.Cookie) {
+	http.SetCookie(c.Writer, cookie)
+}
