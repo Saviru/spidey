@@ -413,9 +413,11 @@ document.addEventListener("DOMContentLoaded", () => {
 	});
 
 	// SPIDEY S-TAGS ENGINE
-	window.spideyProcessElement = function(el) {
-		if (el._spidey_processed) return;
-		el._spidey_processed = true;
+	window.spideyCache = window.spideyCache || {};
+	
+	window.spideyProcessElement = (el) => {
+		if (el.dataset.spideyInit) return;
+		el.dataset.spideyInit = "true";
 
 		let isPost = el.hasAttribute("s-post");
 		let isGet = el.hasAttribute("s-get");
@@ -440,6 +442,37 @@ document.addEventListener("DOMContentLoaded", () => {
 			}
 		}
 
+		const getFinalUrl = () => {
+			let finalUrl = url;
+			if (isGet && el.tagName === "INPUT" && el.name) {
+				const paramChar = finalUrl.includes("?") ? "&" : "?";
+				finalUrl += paramChar + encodeURIComponent(el.name) + "=" + encodeURIComponent(el.value);
+			}
+			return finalUrl;
+		};
+
+		const prefetchAttr = el.getAttribute("@prefetch") || el.getAttribute("s-prefetch");
+		if (isGet && prefetchAttr !== null) {
+			const doPrefetch = () => {
+				const pUrl = getFinalUrl();
+				if (!window.spideyCache[pUrl]) {
+					window.spideyCache[pUrl] = fetch(pUrl).then(res => res.text());
+				}
+			};
+
+			if (prefetchAttr === "intersect") {
+				let observer = new IntersectionObserver((entries) => {
+					if (entries[0].isIntersecting) {
+						doPrefetch();
+						observer.disconnect();
+					}
+				});
+				observer.observe(el);
+			} else { // default to hover
+				el.addEventListener("mouseenter", doPrefetch, { once: true });
+			}
+		}
+
 		const execute = async (e) => {
 			if (e && typeof e.preventDefault === 'function') e.preventDefault();
 			
@@ -458,15 +491,16 @@ document.addEventListener("DOMContentLoaded", () => {
 					}
 				}
 				
-				// Handle URL parameters (e.g. for search inputs on s-get)
-				let finalUrl = url;
-				if (isGet && el.tagName === "INPUT" && el.name) {
-					const paramChar = finalUrl.includes("?") ? "&" : "?";
-					finalUrl += paramChar + encodeURIComponent(el.name) + "=" + encodeURIComponent(el.value);
+				const finalUrl = getFinalUrl();
+				let html;
+				
+				if (isGet && window.spideyCache && window.spideyCache[finalUrl]) {
+					html = await window.spideyCache[finalUrl];
+					delete window.spideyCache[finalUrl]; // fetch fresh next time
+				} else {
+					const response = await fetch(finalUrl, options);
+					html = await response.text();
 				}
-
-				const response = await fetch(finalUrl, options);
-				const html = await response.text();
 				
 				if (targetSelector) {
 					const targetEl = document.querySelector(targetSelector);
@@ -611,8 +645,8 @@ func CompileAOT(htmlContent string, aotJSBuffer *strings.Builder) string {
 		eventName := matches[1]
 		expression := matches[2]
 		
-		// Ignore @transition as it is used for View Transitions, not AOT events
-		if eventName == "transition" {
+		// Ignore @transition and @prefetch as they are built-in Spidey directives, not AOT events
+		if eventName == "transition" || eventName == "prefetch" {
 			return match
 		}
 
@@ -639,7 +673,7 @@ func hasAOTActions(projectDir string) bool {
 				content, _ := os.ReadFile(path)
 				matches := regexp.MustCompile(`@([a-z]+)="[^"]+"`).FindAllStringSubmatch(string(content), -1)
 				for _, match := range matches {
-					if match[1] != "transition" {
+					if match[1] != "transition" && match[1] != "prefetch" {
 						hasAOT = true
 						break
 					}
