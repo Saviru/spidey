@@ -82,7 +82,7 @@ Spidey provides built-in attributes (S-Tags) for server-side reactivity, heavily
   - **Built-in Animations**: Set the name to `spidey-fade`, `spidey-slide-up`, `spidey-slide-down`, or `spidey-scale` for ready-to-use smooth animations! If set to `true`, it defaults to `spidey-fade`.
   - **Custom Animations**: If given a custom name (e.g. `slide-fade`), you can write your own CSS animations using `::view-transition-old(slide-fade)` and `::view-transition-new(slide-fade)`. *Tip: To prevent text from "vibrating" during custom animations, add `mix-blend-mode: normal;` to your pseudo-elements!*
 - `@prefetch="event"` or `s-prefetch="event"`: Preloads the HTML response before the user clicks. Only applies to `s-get` requests.
-  - `@prefetch="hover"` (Default): Starts fetching when the user hovers over the element.
+  - `@prefetch="hover"`: Starts fetching when the user hovers over the element.
   - `@prefetch="intersect"`: Starts fetching as soon as the element scrolls into the viewport.
 
 
