@@ -99,7 +99,20 @@ Example:
 
 You can write inline JavaScript events using the `@` syntax. Spidey's Ahead-Of-Time (AOT) compiler extracts these, assigns a unique ID, and bundles them into vanilla JavaScript listeners.
 
+Because the AOT compiler parses any valid DOM event, you can use `@click`, `@submit`, `@mouseenter`, `@keyup`, and more out of the box! The native event object is automatically passed in as `e`.
+
 ```html
+<!-- Click Event -->
 <button @click="console.log('Clicked!');">Click Me</button>
+
+<!-- Submit Event -->
+<form @submit="e.preventDefault(); console.log('Submitting...');">
+    <button type="submit">Send</button>
+</form>
+
+<!-- Hover Event -->
+<div @mouseenter="e.target.style.color = 'red'" @mouseleave="e.target.style.color = ''">
+    Hover over me!
+</div>
 ```
-During build, this is converted to something like `<button id="s-1a2b3c4d">` and the Javascript logic is securely shipped in `spidey-aot.js`.
+During build, these are converted to unique IDs (e.g., `<button id="s_1a2b3c4d">`) and the JavaScript logic is securely shipped in `spidey-aot.js`.
