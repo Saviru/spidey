@@ -47,7 +47,6 @@ func RequireJWT(secretKey []byte) core.Middleware {
 }
 
 // validates a JWT token using a dynamic key lookup function.
-// Useful for Key Rotation, where the secret key is determined by the token's "kid" header.
 func RequireJWTDynamic(keyFunc jwt.Keyfunc) core.Middleware {
 	return func(c *core.Context, next func()) {
 		tokenString := extractToken(c.Request)

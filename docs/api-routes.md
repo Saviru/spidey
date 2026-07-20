@@ -64,6 +64,58 @@ func main() {
 }
 ```
 
+## Redis Caching
+
+Spidey includes a built-in, high-performance Redis caching middleware. You can use it to wrap heavy API routes so their responses are served instantly from memory instead of hitting your database repeatedly!
+
+### 1. Initialization
+First, initialize the Redis connection pool in your `main.go` file before starting the server:
+
+```go
+package main
+
+import "github.com/saviru/spidey/pkg/middleware"
+
+func main() {
+    // Connect to local Redis, empty password, database 0
+    middleware.InitRedis("localhost:6379", "", 0)
+    
+    // ... start your app
+}
+```
+
+### 2. Caching a Route
+Use the `//spidey:middleware middleware.Cache(ttl)` directive to cache a route. 
+
+```go
+import "time"
+
+//spidey:middleware middleware.Cache(time.Minute * 5)
+//spidey:route GET /api/heavy-data
+func GetHeavyData(c *core.Context) {
+    // This route will only execute once every 5 minutes!
+    // All other requests are intercepted and served instantly from Redis.
+    time.Sleep(2 * time.Second) // Simulate heavy DB query
+    c.JSON(200, map[string]string{"data": "very heavy data"})
+}
+```
+*Note: The caching middleware automatically caches the status code, headers, and body, and generates a unique cache key based on the URL path and query parameters.*
+
+### 3. Cache Invalidation
+When a user updates a resource, you often want to clear the old cache. Spidey provides a handy helper function:
+
+```go
+//spidey:route POST /api/heavy-data
+func UpdateHeavyData(c *core.Context) {
+    // ... save new data to DB ...
+    
+    // Instantly bust the cache for the GET route!
+    middleware.InvalidateCache("/api/heavy-data")
+    
+    c.JSON(200, map[string]string{"status": "updated and cache cleared!"})
+}
+```
+
 ## Dynamic Parameters
 
 

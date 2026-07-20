@@ -30,7 +30,7 @@ func GenerateToken(userID string, data map[string]interface{}, secretKey []byte,
 	return token.SignedString(secretKey)
 }
 
-// GenerateTokenWithKID creates a token and injects a "kid" (Key ID) into the JWT header for dynamic key rotation.
+// creates new signed JWT with a Key ID (kid) in the header for dynamic key lookup.
 func GenerateTokenWithKID(userID string, data map[string]interface{}, secretKey []byte, duration time.Duration, kid string) (string, error) {
 	claims := SpideyClaims{
 		UserID: userID,
@@ -48,15 +48,13 @@ func GenerateTokenWithKID(userID string, data map[string]interface{}, secretKey 
 	return token.SignedString(secretKey)
 }
 
-// GenerateTokenPair creates both a short-lived access token and a long-lived refresh token
+// creates both a short-lived access token and a long-lived refresh token
 func GenerateTokenPair(userID string, data map[string]interface{}, secretKey []byte, accessDuration, refreshDuration time.Duration) (string, string, error) {
-	// 1. Generate Access Token
 	accessToken, err := GenerateToken(userID, data, secretKey, accessDuration)
 	if err != nil {
 		return "", "", err
 	}
 
-	// 2. Generate Refresh Token (minimal payload)
 	refreshClaims := SpideyClaims{
 		UserID: userID,
 		// Omit custom data in refresh token to keep it small
@@ -64,7 +62,7 @@ func GenerateTokenPair(userID string, data map[string]interface{}, secretKey []b
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshDuration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    "spidey-framework",
-			Subject:   "refresh", // Mark this token specifically as a refresh token
+			Subject:   "refresh",
 		},
 	}
 
@@ -77,8 +75,7 @@ func GenerateTokenPair(userID string, data map[string]interface{}, secretKey []b
 	return accessToken, refreshToken, nil
 }
 
-// ValidateTokenDynamic parses and verifies a token using a dynamic key lookup function (jwt.Keyfunc).
-// This is useful for key rotation where the secret key depends on a "kid" header in the token.
+// parses and verifies a token using a dynamic key lookup function (jwt.Keyfunc).
 func ValidateTokenDynamic(tokenString string, keyFunc jwt.Keyfunc) (*SpideyClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &SpideyClaims{}, keyFunc)
 
@@ -103,17 +100,16 @@ func ValidateToken(tokenString string, secretKey []byte) (*SpideyClaims, error) 
 	})
 }
 
-// ValidateRefreshToken strictly validates that the provided token is a refresh token
+// strictly validates that the provided token is a refresh token
 func ValidateRefreshToken(tokenString string, secretKey []byte) (*SpideyClaims, error) {
 	claims, err := ValidateToken(tokenString, secretKey)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if claims.Subject != "refresh" {
 		return nil, errors.New("invalid token type: not a refresh token")
 	}
-	
+
 	return claims, nil
 }
-
