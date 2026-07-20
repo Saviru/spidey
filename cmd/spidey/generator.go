@@ -27,7 +27,7 @@ func initProject(projectName string) {
 	}
 
 	fmt.Println("Fetching dependencies...")
-	getCmd := exec.Command("go", "get", "github.com/goccy/go-json")
+	getCmd := exec.Command("go", "get", "github.com/goccy/go-json", "github.com/go-playground/validator/v10")
 	getCmd.Stdout = os.Stdout
 	getCmd.Stderr = os.Stderr
 	getCmd.Run()
@@ -40,47 +40,8 @@ func initProject(projectName string) {
 	}
 
 	os.MkdirAll("hub/pages", 0755)
-	os.MkdirAll("hub/router", 0755)
 
-	// hub/router/router.go
-	routerCodeBytes, err := starterTemplates.ReadFile("templates/router.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/router.go", routerCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject router.")
-	}
 
-	// hub/router/config.go
-	configCodeBytes, err := starterTemplates.ReadFile("templates/config.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/config.go", configCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject config structs.")
-	}
-
-	// hub/router/export.go
-	exportCodeBytes, err := starterTemplates.ReadFile("templates/export.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/export.go", exportCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject export logic.")
-	}
-
-	// hub/router/listener.go
-	listenerCodeBytes, err := starterTemplates.ReadFile("templates/listener.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/listener.go", listenerCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject listener logic.")
-	}
-
-	// hub/router/context.go
-	contextCodeBytes, err := starterTemplates.ReadFile("templates/context.txt")
-	if err == nil {
-		createFileIfNotExists("hub/router/context.go", contextCodeBytes)
-	} else {
-		fmt.Println("Warning: Failed to inject context.")
-	}
 
 	// hub/pages/base.go
 	baseCodeBytes, err := starterTemplates.ReadFile("templates/base.go")
@@ -110,7 +71,7 @@ func initProject(projectName string) {
 	apiMainCodeBytes, err := starterTemplates.ReadFile("templates/server.txt")
 	if err == nil {
 		apiMainCodeTpl := string(apiMainCodeBytes)
-		apiMainCode := fmt.Sprintf(apiMainCodeTpl, projectName, projectName)
+		apiMainCode := fmt.Sprintf(apiMainCodeTpl, projectName)
 		createFileIfNotExists("api/main.go", []byte(apiMainCode))
 	} else {
 		fmt.Println("Warning: Failed to create api/main.go file.")

@@ -3,9 +3,9 @@
 package pages
 
 import (
-	"%s/hub/router"
+	"github.com/saviru/spidey/pkg/core"
 )
 
-func RegisterRoutes(app *router.App) {
+func RegisterRoutes(app *core.App) {
 	// Auto-generated routes will be injected here during build/dev
 }

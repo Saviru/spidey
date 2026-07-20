@@ -69,9 +69,23 @@ The root layout of the entire application is `app.spidey` at the project root. T
 
 Spidey provides built-in attributes (S-Tags) for server-side reactivity, heavily inspired by HTMX, allowing you to build dynamic UIs without writing JavaScript:
 
-- `s-get="url"`: Fetches HTML from the URL on click.
+- `s-get="url"`: Fetches HTML from the URL on click (or specified trigger).
 - `s-post="url"`: Submits a form via POST (prevents default reload).
 - `s-target="selector"`: The CSS selector of the element to replace with the response HTML.
+- `s-swap="style"`: How to swap the content (`innerHTML` by default, or `outerHTML`).
+- `s-swap-oob="true"`: Out-of-Band (OOB) Swaps! Include this attribute on any top-level element in your server response, and Spidey will automatically swap it with an element matching its `id` anywhere on the page, instead of putting it into the main `s-target`!
+- `s-trigger="event"`: Overrides the default trigger (`click` or `submit`). Supports modifiers:
+  - Custom events: `s-trigger="keyup"`, `s-trigger="change"`, etc.
+  - Debouncing: `s-trigger="keyup delay:500ms"` (waits 500ms after the last keystroke).
+  - Polling: `s-trigger="every:5s"` (fetches data every 5 seconds).
+  - Lazy Loading: `s-trigger="intersect"` (fetches when the element scrolls into view).
+- `@transition="name"` or `s-transition="name"`: Uses the native browser View Transitions API to seamlessly animate the DOM swap. 
+  - **Built-in Animations**: Set the name to `spidey-fade`, `spidey-slide-up`, `spidey-slide-down`, or `spidey-scale` for ready-to-use smooth animations! If set to `true`, it defaults to `spidey-fade`.
+  - **Custom Animations**: If given a custom name (e.g. `slide-fade`), you can write your own CSS animations using `::view-transition-old(slide-fade)` and `::view-transition-new(slide-fade)`. *Tip: To prevent text from "vibrating" during custom animations, add `mix-blend-mode: normal;` to your pseudo-elements!*
+- `@prefetch="event"` or `s-prefetch="event"`: Preloads the HTML response before the user clicks. Only applies to `s-get` requests.
+  - `@prefetch="hover"`: Starts fetching when the user hovers over the element.
+  - `@prefetch="intersect"`: Starts fetching as soon as the element scrolls into the viewport.
+
 
 Example:
 ```html
@@ -86,7 +100,20 @@ Example:
 
 You can write inline JavaScript events using the `@` syntax. Spidey's Ahead-Of-Time (AOT) compiler extracts these, assigns a unique ID, and bundles them into vanilla JavaScript listeners.
 
+Because the AOT compiler parses any valid DOM event, you can use `@click`, `@submit`, `@mouseenter`, `@keyup`, and more out of the box! The native event object is automatically passed in as `e`.
+
 ```html
+<!-- Click Event -->
 <button @click="console.log('Clicked!');">Click Me</button>
+
+<!-- Submit Event -->
+<form @submit="e.preventDefault(); console.log('Submitting...');">
+    <button type="submit">Send</button>
+</form>
+
+<!-- Hover Event -->
+<div @mouseenter="e.target.style.color = 'red'" @mouseleave="e.target.style.color = ''">
+    Hover over me!
+</div>
 ```
-During build, this is converted to something like `<button id="s-1a2b3c4d">` and the Javascript logic is securely shipped in `spidey-aot.js`.
+During build, these are converted to unique IDs (e.g., `<button id="s_1a2b3c4d">`) and the JavaScript logic is securely shipped in `spidey-aot.js`.

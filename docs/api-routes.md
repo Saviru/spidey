@@ -11,10 +11,10 @@ To define a route, use the `//spidey:route` directive followed by the HTTP Metho
 ```go
 package api
 
-import "spideyapp/hub/router"
+import "github.com/saviru/spidey/pkg/core"
 
 //spidey:route GET /users
-func GetUsers(c *router.Context) {
+func GetUsers(c *core.Context) {
     c.JSON(200, map[string]string{"status": "ok"})
 }
 ```
@@ -27,20 +27,103 @@ You can attach middlewares specifically to an API route using the `//spidey:midd
 //spidey:middleware AuthCheck
 //spidey:middleware RateLimiter
 //spidey:route POST /users
-func CreateUser(c *router.Context) {
+func CreateUser(c *core.Context) {
     // Both AuthCheck and RateLimiter will run before CreateUser
 }
 ```
 
 *Note: The middleware functions (`AuthCheck`, `RateLimiter`) must be defined and exported in the `api/` package.*
 
+## Global Middlewares & CORS
+
+Some middlewares, like Cross-Origin Resource Sharing (CORS), need to intercept requests *before* the router matches them to a specific route. For example, browsers send `OPTIONS` preflight requests that would otherwise be rejected.
+
+You can apply standard Go middlewares globally to your entire application using `app.UseGlobal()` in your `main.go`. Spidey includes a built-in CORS middleware for this purpose.
+
+```go
+package main
+
+import (
+    "github.com/saviru/spidey/pkg/core"
+    "github.com/saviru/spidey/pkg/middleware"
+)
+
+func main() {
+    app := core.New()
+
+    // Enable CORS globally
+    app.UseGlobal(middleware.CORS(middleware.CORSConfig{
+        AllowOrigins:     []string{"*"}, // Or specific domains: {"https://example.com"}
+        AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+        AllowHeaders:     []string{"Content-Type", "Authorization"},
+        AllowCredentials: true,
+        MaxAge:           86400, // 24 hours caching for preflight requests
+    }))
+
+    app.Listen()
+}
+```
+
+## Redis Caching
+
+Spidey includes a built-in, high-performance Redis caching middleware. You can use it to wrap heavy API routes so their responses are served instantly from memory instead of hitting your database repeatedly!
+
+### 1. Initialization
+First, initialize the Redis connection pool in your `main.go` file before starting the server:
+
+```go
+package main
+
+import "github.com/saviru/spidey/pkg/middleware"
+
+func main() {
+    // Connect to local Redis, empty password, database 0
+    middleware.InitRedis("localhost:6379", "", 0)
+    
+    // ... start your app
+}
+```
+
+### 2. Caching a Route
+Use the `//spidey:middleware middleware.Cache(ttl)` directive to cache a route. 
+
+```go
+import "time"
+
+//spidey:middleware middleware.Cache(time.Minute * 5)
+//spidey:route GET /api/heavy-data
+func GetHeavyData(c *core.Context) {
+    // This route will only execute once every 5 minutes!
+    // All other requests are intercepted and served instantly from Redis.
+    time.Sleep(2 * time.Second) // Simulate heavy DB query
+    c.JSON(200, map[string]string{"data": "very heavy data"})
+}
+```
+*Note: The caching middleware automatically caches the status code, headers, and body, and generates a unique cache key based on the URL path and query parameters.*
+
+### 3. Cache Invalidation
+When a user updates a resource, you often want to clear the old cache. Spidey provides a handy helper function:
+
+```go
+//spidey:route POST /api/heavy-data
+func UpdateHeavyData(c *core.Context) {
+    // ... save new data to DB ...
+    
+    // Instantly bust the cache for the GET route!
+    middleware.InvalidateCache("/api/heavy-data")
+    
+    c.JSON(200, map[string]string{"status": "updated and cache cleared!"})
+}
+```
+
 ## Dynamic Parameters
+
 
 You can define dynamic path parameters directly in your API comments using the bracket syntax `[paramName]`. Spidey's compiler automatically transforms this into the `{paramName}` format that the internal router expects.
 
 ```go
 //spidey:route GET /users/[id]
-func GetUser(c *router.Context) {
+func GetUser(c *core.Context) {
     userID := c.Param("id")
     c.JSON(200, map[string]string{"user_id": userID})
 }

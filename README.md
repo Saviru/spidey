@@ -2,6 +2,8 @@
 
 Spidey is a blazing-fast, modern full-stack meta-framework written in Go. It enables seamless frontend and backend development with hybrid routing, server-side reactivity (S-Tags), scoped CSS, Islands architecture (partial hydration), API generation, and Static Site Generation (SSG).
 
+[![GitHub Release](https://img.shields.io/github/v/release/saviru/spidey?style=for-the-badge&color=blue)](https://github.com/saviru/spidey/releases)
+
 ## Features
 
 *   **Hybrid Routing:** Drop a `.spidey` file in `pages/` for an instant route, or use `pages/folder/index.spidey` for complex nested routes and layouts.
@@ -49,8 +51,6 @@ MIT License.
 
 ```Copyright (c) 2025 Saviru Kashmira Atapattu```
 
-
-<br>
 <br>
 <hr>
 <p align="center">Made with ❤️ for the web development community</p>

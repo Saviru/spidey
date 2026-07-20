@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+
 	"github.com/saviru/spidey/internal/config"
 )
 
@@ -12,7 +13,7 @@ func CompileBinary(projectDir string, cfg *config.Config) error {
 	if runtime.GOOS == "windows" {
 		outPath += ".exe"
 	}
-	cmd := exec.Command("go", "build", "-o", outPath, "./api/main.go")
+	cmd := exec.Command("go", "build", "-o", outPath, "./api")
 	cmd.Dir = projectDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
