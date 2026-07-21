@@ -469,7 +469,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 		let trigger = el.getAttribute("s-trigger");
 		if (!trigger) {
-			trigger = isPost ? "submit" : "click";
+			trigger = (isPost && el.tagName === "FORM") ? "submit" : "click";
 		}
 
 		let url = isPost ? el.getAttribute("s-post") : el.getAttribute("s-get");
@@ -491,6 +491,26 @@ document.addEventListener("DOMContentLoaded", () => {
 			if (isGet && el.tagName === "INPUT" && el.name) {
 				const paramChar = finalUrl.includes("?") ? "&" : "?";
 				finalUrl += paramChar + encodeURIComponent(el.name) + "=" + encodeURIComponent(el.value);
+			}
+			
+			let includeSelector = el.getAttribute("s-include");
+			if (isGet && includeSelector) {
+				document.querySelectorAll(includeSelector).forEach(incEl => {
+					const appendVal = (name, val) => {
+						if (!name) return;
+						const paramChar = finalUrl.includes("?") ? "&" : "?";
+						finalUrl += paramChar + encodeURIComponent(name) + "=" + encodeURIComponent(val);
+					};
+					if (incEl.tagName === "FORM") {
+						new FormData(incEl).forEach((val, key) => appendVal(key, val));
+					} else if (incEl.name) {
+						if (incEl.type === "checkbox" || incEl.type === "radio") {
+							if (incEl.checked) appendVal(incEl.name, incEl.value);
+						} else {
+							appendVal(incEl.name, incEl.value);
+						}
+					}
+				});
 			}
 			return finalUrl;
 		};
@@ -527,12 +547,30 @@ document.addEventListener("DOMContentLoaded", () => {
 				let options = {};
 				if (isPost) {
 					options.method = "POST";
+					let bodyData = new FormData();
+					
 					if (el.tagName === "FORM") {
-						options.body = new FormData(el);
+						bodyData = new FormData(el);
 					} else {
 						const form = el.closest("form");
-						if (form) options.body = new FormData(form);
+						if (form) bodyData = new FormData(form);
 					}
+					
+					let includeSelector = el.getAttribute("s-include");
+					if (includeSelector) {
+						document.querySelectorAll(includeSelector).forEach(incEl => {
+							if (incEl.tagName === "FORM") {
+								new FormData(incEl).forEach((val, key) => bodyData.append(key, val));
+							} else if (incEl.name) {
+								if (incEl.type === "checkbox" || incEl.type === "radio") {
+									if (incEl.checked) bodyData.append(incEl.name, incEl.value);
+								} else {
+									bodyData.append(incEl.name, incEl.value);
+								}
+							}
+						});
+					}
+					options.body = bodyData;
 				}
 				
 				const finalUrl = getFinalUrl();

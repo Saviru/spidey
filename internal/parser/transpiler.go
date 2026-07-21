@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// TranspileToGo converts .spidey into .go
+// converts .spidey into .go
 func TranspileToGo(modName string, componentName string, rawContent string, appLayout string, components string, globalStyles *strings.Builder) (string, error) {
 	parsed, err := Parse(componentName, rawContent)
 	if err != nil {
