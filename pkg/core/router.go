@@ -47,12 +47,14 @@ type App struct {
 	registered        map[string]bool
 	Config            Config
 	globalMiddlewares []func(http.Handler) http.Handler
+	WS                *WSHub
 }
 
 func New() *App {
 	app := &App{
 		mux:        http.NewServeMux(),
 		registered: make(map[string]bool),
+		WS:         NewWSHub(),
 	}
 
 	// Default config
@@ -141,7 +143,7 @@ func (g *RouterGroup) Handle(method, path string, handlers ...any) *Route {
 	totalMiddlewares = append(totalMiddlewares, routeMiddlewares...)
 
 	g.app.mux.HandleFunc(route, func(w http.ResponseWriter, r *http.Request) {
-		ctx := &Context{Writer: w, Request: r}
+		ctx := &Context{Writer: w, Request: r, App: g.app}
 
 		index := 0
 		var next func()

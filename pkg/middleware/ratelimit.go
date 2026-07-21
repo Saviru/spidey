@@ -36,6 +36,7 @@ func DefaultKeyFunc(c *core.Context) string {
 	return ip
 }
 
+// Redis token bucket lua script
 const redisRateLimitScript = `
 local key = KEYS[1]
 local window = tonumber(ARGV[1])
@@ -50,9 +51,7 @@ local ttl = redis.call("PTTL", key)
 return {current, ttl}
 `
 
-// RateLimit creates an advanced rate limiting middleware
 func RateLimit(config RateLimitConfig) func(*core.Context, func()) {
-	// Apply Defaults
 	if config.MaxRequests <= 0 {
 		config.MaxRequests = 100
 	}
@@ -77,23 +76,21 @@ func RateLimit(config RateLimitConfig) func(*core.Context, func()) {
 	requestsPerSecond := float64(config.MaxRequests) / config.Window.Seconds()
 
 	return func(c *core.Context, next func()) {
-		// 1. Skip logic
 		if config.SkipFunc != nil && config.SkipFunc(c) {
 			next()
 			return
 		}
 
-		// 2. Generate Key
+		// Generate Key
 		key := "spidey:ratelimit:" + config.KeyFunc(c)
 		var remaining int
 		var resetTime int64
 		var allowed bool
 
-		// 3. Evaluate Limits
+		// Evaluate Limits
 		useMemory := true
 
 		if config.Store == "redis" && rdb != nil {
-			// Try Redis first
 			result, err := rdb.Eval(redisCtx, redisRateLimitScript, []string{key}, int64(config.Window/time.Millisecond), config.MaxRequests).Result()
 			if err == nil {
 				useMemory = false
@@ -108,7 +105,6 @@ func RateLimit(config RateLimitConfig) func(*core.Context, func()) {
 				resetTime = time.Now().Add(time.Duration(ttlMs) * time.Millisecond).Unix()
 				allowed = current <= config.MaxRequests
 			}
-			// If Redis fails, useMemory remains true (Graceful Fallback)
 		}
 
 		if useMemory {
@@ -122,16 +118,16 @@ func RateLimit(config RateLimitConfig) func(*core.Context, func()) {
 			resetTime = time.Now().Add(config.Window).Unix()
 		}
 
-		// 4. Inject standard Rate Limit Headers
+		// Inject standard Rate Limit Headers
 		c.Writer.Header().Set("X-RateLimit-Limit", strconv.Itoa(config.MaxRequests))
 		c.Writer.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))
 		c.Writer.Header().Set("X-RateLimit-Reset", strconv.FormatInt(resetTime, 10))
 
-		// 5. Reject or Proceed
+		// Reject or Proceed
 		if !allowed {
 			c.Writer.Header().Set("Retry-After", strconv.FormatInt(resetTime-time.Now().Unix(), 10))
 			config.RejectFunc(c)
-			return // DO NOT CALL NEXT()
+			return
 		}
 
 		next()

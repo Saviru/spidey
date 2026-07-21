@@ -1,14 +1,15 @@
 package main
 
 import (
-	"%s/hub/pages"
+	"%s/api/spidey/routes"
 	"github.com/saviru/spidey/pkg/core"
 )
 
 func main() {
 	app := core.New()
 
-	pages.RegisterRoutes(app)
+	routes.RegisterRoutes(app)
+	routes.RegisterAPIRoutes(app)
 
 	app.Static("/assets/", "public/assets")
 

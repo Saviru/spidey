@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,11 +13,14 @@ import (
 
 var validate = validator.New()
 
+// Context is the most important part of Spidey. It allows us to pass variables between middleware,
+// manage the request, send responses, and upgrade to WebSockets.
 type Context struct {
 	Writer     http.ResponseWriter
 	Request    *http.Request
 	queryCache url.Values
 	Keys       map[string]any
+	App        *App // Reference to the app so we can access the WSHub
 }
 
 // Stores a new key/value pair exclusively for this context
@@ -104,9 +108,29 @@ func (c *Context) PureJSON(status int, data interface{}) {
 func (c *Context) JSONP(status int, data interface{}, callback string) {
 	c.Writer.Header().Set("Content-Type", "application/javascript")
 	c.Writer.WriteHeader(status)
-	c.Writer.Write([]byte(callback + "("))
+	fmt.Fprintf(c.Writer, "%s(", callback)
 	json.NewEncoder(c.Writer).Encode(data)
-	c.Writer.Write([]byte(");"))
+	fmt.Fprint(c.Writer, ")")
+}
+
+// Upgrade upgrades the HTTP connection to a WebSocket connection
+func (c *Context) Upgrade() (*SpideyConn, error) {
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	spideyConn := &SpideyConn{
+		ID:   c.Request.RemoteAddr, // Default ID, can be overridden by users
+		Conn: conn,
+		Hub:  c.App.WS,
+		Send: make(chan []byte, 256),
+	}
+
+	go spideyConn.writePump()
+	go spideyConn.readPump()
+
+	return spideyConn, nil
 }
 
 // Query
