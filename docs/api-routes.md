@@ -116,6 +116,54 @@ func UpdateHeavyData(c *core.Context) {
 }
 ```
 
+## Rate Limiting
+
+Spidey includes an enterprise-grade Distributed Rate Limiting Middleware. It uses Redis for cross-server synchronization, but gracefully falls back to a high-performance in-memory Token Bucket (`golang.org/x/time/rate`) if Redis is unavailable.
+
+### Basic Usage
+The most common use case is limiting requests per IP address. Spidey injects standard `X-RateLimit-*` HTTP headers automatically!
+
+```go
+import (
+    "time"
+    "github.com/saviru/spidey/pkg/middleware"
+)
+
+// Limit to 5 requests per 10 seconds per IP
+//spidey:middleware middleware.RateLimit(middleware.RateLimitConfig{MaxRequests: 5, Window: 10 * time.Second})
+//spidey:route GET /api/fragile-endpoint
+func GetFragileData(c *core.Context) {
+    c.JSON(200, map[string]string{"data": "You are within limits!"})
+}
+```
+
+### Advanced Usage (Custom Keys & Bypassing)
+You can completely customize how limits are applied. For example, rate limit by User ID or API Key instead of IP, and provide custom rejection messages.
+
+```go
+// Define your advanced configuration in standard Go code (for IDE support & clean DX!)
+var AdvancedLimiter = middleware.RateLimit(middleware.RateLimitConfig{
+    MaxRequests: 100, 
+    Window: time.Minute,
+    KeyFunc: func(c *core.Context) string {
+        return c.Request.Header.Get("X-API-Key")
+    },
+    SkipFunc: func(c *core.Context) bool {
+        return c.Request.RemoteAddr == "127.0.0.1" // Skip limits for localhost
+    },
+    RejectFunc: func(c *core.Context) {
+        c.JSON(429, map[string]string{"error": "Whoa, slow down! Limit exceeded."})
+    },
+})
+
+// Apply the middleware using the variable name!
+//spidey:middleware AdvancedLimiter
+//spidey:route GET /api/advanced-limit
+func AdvancedRoute(c *core.Context) {
+    c.JSON(200, map[string]string{"msg": "Success!"})
+}
+```
+
 ## Dynamic Parameters
 
 

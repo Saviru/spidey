@@ -15,7 +15,6 @@ import (
 var rdb *redis.Client
 var redisCtx = context.Background()
 
-// InitRedis initializes the global Redis connection pool for the Cache middleware
 func InitRedis(addr, password string, db int) {
 	rdb = redis.NewClient(&redis.Options{
 		Addr:     addr,
@@ -24,7 +23,6 @@ func InitRedis(addr, password string, db int) {
 	})
 }
 
-// responseRecorder intercepts the HTTP response body and status
 type responseRecorder struct {
 	http.ResponseWriter
 	body       []byte
@@ -41,7 +39,6 @@ func (r *responseRecorder) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 }
 
-// CachedResponse is the structure saved to Redis
 type CachedResponse struct {
 	Status  int               `json:"status"`
 	Headers map[string]string `json:"headers"`
@@ -57,7 +54,6 @@ func generateCacheKey(r *http.Request) string {
 	return "spidey:cache:" + hex.EncodeToString(hash[:])
 }
 
-// Cache is a Spidey middleware that intercepts the response and caches it in Redis
 func Cache(ttl time.Duration) func(*core.Context, func()) {
 	return func(c *core.Context, next func()) {
 		if rdb == nil || c.Request.Method != http.MethodGet {
@@ -68,40 +64,38 @@ func Cache(ttl time.Duration) func(*core.Context, func()) {
 
 		key := generateCacheKey(c.Request)
 
-		// 1. Check Redis for Cache Hit
+		// Check Redis
 		val, err := rdb.Get(redisCtx, key).Result()
 		if err == nil && val != "" {
 			var cached CachedResponse
 			if err := json.Unmarshal([]byte(val), &cached); err == nil {
-				// Cache HIT! Serve directly
+				// Cache HIT
 				for k, v := range cached.Headers {
 					c.Writer.Header().Set(k, v)
 				}
 				c.Writer.WriteHeader(cached.Status)
 				c.Writer.Write(cached.Body)
-				return // Abort request, do not call next()
+				return
 			}
 		}
 
-		// 2. Cache Miss - Intercept the response
+		// Cache Miss
 		recorder := &responseRecorder{
 			ResponseWriter: c.Writer,
 			statusCode:     http.StatusOK, // Default to 200
 		}
-		
+
 		// Temporarily replace the writer in the context
 		originalWriter := c.Writer
 		c.Writer = recorder
 
-		// Process the actual route
 		next()
 
-		// Restore the original writer (just in case)
+		// Restore the original writer
 		c.Writer = originalWriter
 
-		// Only cache successful GET responses
 		if recorder.statusCode >= 200 && recorder.statusCode < 300 {
-			// 3. Save to Redis
+			// Save to Redis
 			headers := make(map[string]string)
 			for k, v := range recorder.Header() {
 				if len(v) > 0 {
@@ -122,14 +116,14 @@ func Cache(ttl time.Duration) func(*core.Context, func()) {
 	}
 }
 
-// InvalidateCache manually removes a specific path from the cache (e.g. "/api/users")
+// removes a specific path from the cache (e.g. "/api/users")
 func InvalidateCache(path string) error {
 	if rdb == nil {
 		return nil
 	}
-	
+
 	req, _ := http.NewRequest("GET", path, nil)
 	key := generateCacheKey(req)
-	
+
 	return rdb.Del(redisCtx, key).Err()
 }
