@@ -113,7 +113,7 @@ func (c *Context) JSONP(status int, data interface{}, callback string) {
 	fmt.Fprint(c.Writer, ")")
 }
 
-// Upgrade upgrades the HTTP connection to a WebSocket connection
+// upgrades the HTTP connection to a WebSocket connection
 func (c *Context) Upgrade() (*SpideyConn, error) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {

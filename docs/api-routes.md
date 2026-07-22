@@ -6,6 +6,11 @@ You can build your backend directly in the `api/` directory using standard Go fi
 
 Spidey scans all `.go` files inside the `api/` directory (excluding `main.go`) for special comment directives starting with `//spidey:`.
 
+### Dynamic Package Discovery (MVC Support)
+You are not restricted to placing all your files directly in the `api/` folder! You can create subdirectories to organize your codebase into a robust **Model-View-Controller (MVC)** architecture.
+
+For example, you can create `api/controllers`, `api/services`, or `api/models`. Spidey dynamically crawls the entire `api/` directory, discovers your Go packages, generates the correct import paths, and securely wires up all your routes and middlewares without any manual configuration!
+
 To define a route, use the `//spidey:route` directive followed by the HTTP Method and the path. The function immediately following the comments will be bound to that route.
 
 ```go
