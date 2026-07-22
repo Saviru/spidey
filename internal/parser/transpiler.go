@@ -55,18 +55,26 @@ func TranspileToGo(modName string, componentName string, rawContent string, appL
 	builder.WriteString("package pages\n\n")
 	builder.WriteString("import (\n\t\"bytes\"\n\t\"html/template\"\n")
 	builder.WriteString(fmt.Sprintf("\t\"%s/api/spidey\"\n", modName))
+	builder.WriteString("\t\"github.com/saviru/spidey/pkg/sandbox\"\n")
 	builder.WriteString(")\n\n")
 
-	// Inject server-side logic and structs directly
-	if parsed.GoLogic != "" {
-		builder.WriteString("// --- User Backend Frontmatter ---\n")
-		builder.WriteString(parsed.GoLogic)
-		builder.WriteString("\n// --------------------------------\n\n")
-	}
+	// Escape backticks in the user's frontmatter
+	safeGoLogic := strings.ReplaceAll(parsed.GoLogic, "`", "` + \"`\" + `")
 
 	// Generate the auto-registering init block
 	builder.WriteString("func init() {\n")
 	builder.WriteString(fmt.Sprintf("\tspidey.Register(\"%s\", func(data interface{}) (string, error) {\n", componentName))
+	
+	// If the user wrote frontmatter, evaluate it dynamically in the sandbox
+	if parsed.GoLogic != "" {
+		builder.WriteString("\t\t// --- Evaluated Sandbox Frontmatter ---\n")
+		builder.WriteString(fmt.Sprintf("\t\tuserScript := `%s`\n", safeGoLogic))
+		builder.WriteString("\t\tsandboxData, err := sandbox.EvalFrontmatter(userScript, data)\n")
+		builder.WriteString("\t\tif err != nil {\n\t\t\treturn \"\", err\n\t\t}\n")
+		builder.WriteString("\t\tdata = sandboxData\n")
+		builder.WriteString("\t\t// -------------------------------------\n\n")
+	}
+
 	builder.WriteString(fmt.Sprintf("\t\ttmpl, err := template.New(\"%s\").Parse(`%s`)\n", componentName, safeHTML))
 	builder.WriteString("\t\tif err != nil {\n\t\t\treturn \"\", err\n\t\t}\n")
 	builder.WriteString("\t\tvar buf bytes.Buffer\n")

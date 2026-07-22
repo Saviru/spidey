@@ -39,8 +39,6 @@ func initProject(projectName string) {
 		os.MkdirAll(dir, 0755)
 	}
 
-
-
 	// api/spidey/spidey_base.go
 	baseCodeBytes, err := starterTemplates.ReadFile("templates/base.go")
 	if err == nil {
