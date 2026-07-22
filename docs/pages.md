@@ -74,6 +74,7 @@ Spidey provides built-in attributes (S-Tags) for server-side reactivity, heavily
 - `s-target="selector"`: The CSS selector of the element to replace with the response HTML.
 - `s-swap="style"`: How to swap the content (`innerHTML` by default, or `outerHTML`).
 - `s-swap-oob="true"`: Out-of-Band (OOB) Swaps! Include this attribute on any top-level element in your server response, and Spidey will automatically swap it with an element matching its `id` anywhere on the page, instead of putting it into the main `s-target`!
+- `s-include="selector"`: Allows you to seamlessly bundle external form inputs or elements into your AJAX requests. For example, `s-include="#my-form, .filter-inputs"` will gather all input values and append them to a POST request's body or a GET request's URL parameters.
 - `s-trigger="event"`: Overrides the default trigger (`click` or `submit`). Supports modifiers:
   - Custom events: `s-trigger="keyup"`, `s-trigger="change"`, etc.
   - Debouncing: `s-trigger="keyup delay:500ms"` (waits 500ms after the last keystroke).

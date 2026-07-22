@@ -17,7 +17,7 @@ type CORSConfig struct {
 
 // Use it via app.UseGlobal(middleware.CORS(config)) to ensure it catches OPTIONS requests.
 func CORS(config CORSConfig) func(http.Handler) http.Handler {
-	// Pre-process configuration for faster lookups
+	// Pre-process configs
 	allowAllOrigins := false
 	for _, o := range config.AllowOrigins {
 		if o == "*" {
