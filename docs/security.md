@@ -117,3 +117,14 @@ func main() {
     // ...
 }
 ```
+
+---
+
+## 9. HTTP Server Timeouts (Slowloris Protection)
+
+To prevent connection exhaustion and Slowloris/Slow-POST attacks where an attacker opens connections and sends request headers or body bytes extremely slowly:
+- Spidey initializes the underlying HTTP server with strict, safe, production-grade default timeouts instead of relying on infinite timeouts.
+- **ReadHeaderTimeout**: **5 seconds** (limits how long a client can take to send HTTP request headers).
+- **ReadTimeout**: **30 seconds** (limits the total time to read the entire request, including the body).
+- **WriteTimeout**: **30 seconds** (limits the total time for response writing).
+- **IdleTimeout**: **120 seconds** (keeps idle keep-alive connections open for up to 2 minutes before closing them).
