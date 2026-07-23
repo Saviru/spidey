@@ -5,6 +5,7 @@ import (
 	"html"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 
 	json "github.com/goccy/go-json"
@@ -13,6 +14,7 @@ import (
 )
 
 var validate = validator.New()
+var jsonpCallbackRegexp = regexp.MustCompile(`[^a-zA-Z0-9_\.]`)
 
 // Context is the most important part of Spidey. It allows us to pass variables between middleware,
 // manage the request, send responses, and upgrade to WebSockets.
@@ -109,7 +111,11 @@ func (c *Context) PureJSON(status int, data interface{}) {
 func (c *Context) JSONP(status int, data interface{}, callback string) {
 	c.Writer.Header().Set("Content-Type", "application/javascript")
 	c.Writer.WriteHeader(status)
-	fmt.Fprintf(c.Writer, "%s(", callback)
+	safeCallback := jsonpCallbackRegexp.ReplaceAllString(callback, "")
+	if safeCallback == "" {
+		safeCallback = "callback"
+	}
+	fmt.Fprintf(c.Writer, "%s(", safeCallback)
 	json.NewEncoder(c.Writer).Encode(data)
 	fmt.Fprint(c.Writer, ")")
 }
