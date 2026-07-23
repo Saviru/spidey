@@ -10,3 +10,4 @@ Welcome to the Spidey documentation.
 - [Authentication](./authentication.md): Built-in JWT and OAuth2 integration.
 - [Router API](./router.md): Handling requests, responses, context storage, and middleware.
 - [Architecture](./architecture.md): How the transpiler and bundler work.
+- [Security](./security.md): Built-in security protections (XSS, CSRF, CSWSH, sandboxing, panic recovery).

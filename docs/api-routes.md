@@ -58,7 +58,7 @@ func main() {
 
     // Enable CORS globally
     app.UseGlobal(middleware.CORS(middleware.CORSConfig{
-        AllowOrigins:     []string{"*"}, // Or specific domains: {"https://example.com"}
+        AllowOrigins:     []string{"https://example.com"}, // Specific domains. Note: "*" wildcard with AllowCredentials=true is a spec violation and will be browser-rejected.
         AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
         AllowHeaders:     []string{"Content-Type", "Authorization"},
         AllowCredentials: true,
