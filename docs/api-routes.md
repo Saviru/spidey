@@ -128,6 +128,8 @@ Spidey includes an enterprise-grade Distributed Rate Limiting Middleware. It use
 ### Basic Usage
 The most common use case is limiting requests per IP address. Spidey injects standard `X-RateLimit-*` HTTP headers automatically!
 
+> **Security Note (Reverse Proxies)**: By default, Spidey securely uses the raw TCP connection IP (`RemoteAddr`) and ignores headers like `X-Forwarded-For` to prevent trivial IP spoofing attacks. If you are running Spidey behind a trusted reverse proxy (like Nginx, AWS, or Cloudflare), you must explicitly set `TrustProxy: true` in your `RateLimitConfig` so the limiter safely extracts the client IP from the headers.
+
 ```go
 import (
     "time"
