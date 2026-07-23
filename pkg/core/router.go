@@ -70,7 +70,7 @@ func New() *App {
 	app.RouterGroup = RouterGroup{
 		prefix:      "",
 		app:         app,
-		middlewares: nil,
+		middlewares: []Middleware{Recover()},
 	}
 	return app
 }
