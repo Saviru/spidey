@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/gorilla/websocket"
 	json "github.com/goccy/go-json"
 
 	"github.com/go-playground/validator/v10"
@@ -120,6 +121,26 @@ func (c *Context) JSONP(status int, data interface{}, callback string) {
 
 // upgrades the HTTP connection to a WebSocket connection
 func (c *Context) Upgrade() (*SpideyConn, error) {
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
+	if len(c.App.Config.WSAllowedOrigins) > 0 {
+		upgrader.CheckOrigin = func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				return true // allow non-browser clients
+			}
+			for _, allowed := range c.App.Config.WSAllowedOrigins {
+				if allowed == "*" || allowed == origin {
+					return true
+				}
+			}
+			return false
+		}
+	} // else CheckOrigin is nil, meaning gorilla/websocket enforces same-origin safely
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return nil, err

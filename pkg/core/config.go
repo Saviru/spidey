@@ -6,6 +6,7 @@ type Directories struct {
 }
 
 type Config struct {
-	Port        int         `json:"port"`
-	Directories Directories `json:"directories"`
+	Port             int         `json:"port"`
+	Directories      Directories `json:"directories"`
+	WSAllowedOrigins []string    `json:"wsAllowedOrigins"` // Origins allowed to connect via WebSocket (empty = same origin only)
 }
