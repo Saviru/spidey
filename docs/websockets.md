@@ -76,3 +76,30 @@ If the server sends:
 </div>
 ```
 Spidey will automatically append that `<p>` tag inside the existing `<div id="messages">` on your page!
+
+---
+
+## Security & Cross-Origin Policies
+
+By default, Spidey is **Secure-by-Default** against Cross-Site WebSocket Hijacking (CSWSH). 
+
+When a client attempts to connect to your WebSocket endpoints, the framework enforces the **Same-Origin Policy**. If the `Origin` header of the incoming request does not perfectly match your server's host, the connection is instantly rejected.
+
+If you are building a public API or a mobile application and explicitly need to allow cross-origin WebSocket connections, you can define an allow-list in your `spidey.config.json`:
+
+```json
+{
+    "wsAllowedOrigins": [
+        "https://app.example.com",
+        "https://admin.example.com"
+    ]
+}
+```
+
+To explicitly allow *all* origins (use with extreme caution!), you can specify the wildcard `*`:
+
+```json
+{
+    "wsAllowedOrigins": ["*"]
+}
+```
