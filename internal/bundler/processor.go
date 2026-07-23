@@ -254,9 +254,9 @@ func generateAPIRoutes(projectDir string) {
 			return nil
 		})
 	}
-	
+
 	apiRoutesFile := filepath.Join(projectDir, "api", "spidey", "routes", "api_routes.go")
-	
+
 	var importsBuilder strings.Builder
 	for path, alias := range importAliases {
 		importsBuilder.WriteString(fmt.Sprintf("\t%s \"%s\"\n", alias, path))
@@ -588,9 +588,7 @@ document.addEventListener("DOMContentLoaded", () => {
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(html, "text/html");
 				
-				// --- Security: Client-Side DOM Sanitization ---
-				// Strip malicious tags, event handlers, and javascript: URIs
-				// before they can be injected into the live DOM via innerHTML/outerHTML
+				// Client-Side DOM Sanitization
 				const sanitizeNode = (node) => {
 					if (node.nodeType === 1) { // ELEMENT_NODE
 						if (['SCRIPT', 'OBJECT', 'EMBED', 'IFRAME'].includes(node.tagName)) {
@@ -609,7 +607,6 @@ document.addEventListener("DOMContentLoaded", () => {
 					}
 				};
 				sanitizeNode(doc.documentElement);
-				// ----------------------------------------------
 				
 				doc.querySelectorAll('[s-swap-oob]').forEach(oobEl => {
 					const oobId = oobEl.getAttribute('id');
@@ -619,7 +616,7 @@ document.addEventListener("DOMContentLoaded", () => {
 							existingEl.outerHTML = oobEl.outerHTML;
 						}
 					}
-					oobEl.remove(); // Remove from temporary DOM so it doesn't go into main target
+					oobEl.remove();
 				});
 				
 				const remainingHtml = doc.body.innerHTML;
@@ -641,7 +638,7 @@ document.addEventListener("DOMContentLoaded", () => {
 							// Determine the view-transition-name to use
 							let activeName = transitionName;
 							if (activeName === "true" || activeName === "") {
-								activeName = "spidey-fade"; // default smooth fade
+								activeName = "spidey-fade";
 							}
 							
 							targetEl.style.viewTransitionName = activeName;
