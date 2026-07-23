@@ -544,7 +544,11 @@ document.addEventListener("DOMContentLoaded", () => {
 			const swapStyle = el.getAttribute("s-swap") || "innerHTML";
 			
 			try {
-				let options = {};
+				let options = {
+					headers: {
+						"X-Spidey-Request": "true"
+					}
+				};
 				if (isPost) {
 					options.method = "POST";
 					let bodyData = new FormData();

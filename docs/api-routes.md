@@ -144,6 +144,21 @@ func GetFragileData(c *core.Context) {
 }
 ```
 
+## CSRF Protection
+
+Spidey natively supports the OWASP Custom Request Header Defense mechanism for API-driven CSRF protection.
+
+The client-side S-Tags engine automatically attaches an `X-Spidey-Request: true` header to all `fetch()` requests. To enforce this protection on your backend routes and block malicious Cross-Site Request Forgery attempts, apply the `middleware.CSRF()` middleware to your state-changing API endpoints (POST, PUT, DELETE):
+
+```go
+//spidey:middleware middleware.CSRF()
+//spidey:route POST /api/transfer-funds
+func TransferFunds(c *core.Context) {
+    // This route is fully protected against CSRF attacks!
+    c.JSON(200, map[string]string{"status": "success"})
+}
+```
+
 ### Advanced Usage (Custom Keys & Bypassing)
 You can completely customize how limits are applied. For example, rate limit by User ID or API Key instead of IP, and provide custom rejection messages.
 

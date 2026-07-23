@@ -16,8 +16,6 @@ import (
 var validate = validator.New()
 var jsonpCallbackRegexp = regexp.MustCompile(`[^a-zA-Z0-9_\.]`)
 
-// Context is the most important part of Spidey. It allows us to pass variables between middleware,
-// manage the request, send responses, and upgrade to WebSockets.
 type Context struct {
 	Writer     http.ResponseWriter
 	Request    *http.Request
