@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"log"
-	"net/http"
 	"sync"
 	"time"
 
@@ -17,8 +16,6 @@ const (
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 512 * 1024 // 512 KB
 )
-
-
 
 type SpideyConn struct {
 	ID        string
