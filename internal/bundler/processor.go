@@ -588,6 +588,29 @@ document.addEventListener("DOMContentLoaded", () => {
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(html, "text/html");
 				
+				// --- Security: Client-Side DOM Sanitization ---
+				// Strip malicious tags, event handlers, and javascript: URIs
+				// before they can be injected into the live DOM via innerHTML/outerHTML
+				const sanitizeNode = (node) => {
+					if (node.nodeType === 1) { // ELEMENT_NODE
+						if (['SCRIPT', 'OBJECT', 'EMBED', 'IFRAME'].includes(node.tagName)) {
+							node.remove();
+							return;
+						}
+						for (let i = node.attributes.length - 1; i >= 0; i--) {
+							const attr = node.attributes[i];
+							if (attr.name.toLowerCase().startsWith('on')) {
+								node.removeAttribute(attr.name);
+							} else if (attr.value.toLowerCase().trim().startsWith('javascript:')) {
+								node.removeAttribute(attr.name);
+							}
+						}
+						Array.from(node.childNodes).forEach(sanitizeNode);
+					}
+				};
+				sanitizeNode(doc.documentElement);
+				// ----------------------------------------------
+				
 				doc.querySelectorAll('[s-swap-oob]').forEach(oobEl => {
 					const oobId = oobEl.getAttribute('id');
 					if (oobId) {
