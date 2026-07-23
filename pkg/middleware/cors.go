@@ -36,6 +36,10 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 		methodsStr = "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
 	}
 
+	if len(config.AllowHeaders) == 0 {
+		config.AllowHeaders = []string{"Content-Type", "Authorization", "Accept", "Accept-Language", "Content-Language", "X-Spidey-Request"}
+	}
+
 	headersStr := strings.Join(config.AllowHeaders, ", ")
 	exposeStr := strings.Join(config.ExposeHeaders, ", ")
 
@@ -80,9 +84,6 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 
 				if headersStr != "" {
 					w.Header().Set("Access-Control-Allow-Headers", headersStr)
-				} else if reqHeaders := r.Header.Get("Access-Control-Request-Headers"); reqHeaders != "" {
-					// If no specific headers are configured, echo back what the client requested
-					w.Header().Set("Access-Control-Allow-Headers", reqHeaders)
 				}
 
 				if config.MaxAge > 0 {

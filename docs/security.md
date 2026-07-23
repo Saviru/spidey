@@ -72,6 +72,7 @@ Spidey's WebSocket server is secure by default:
 Spidey's CORS middleware enforces correct specs and prevents caching issues:
 - **Spec Enforcement**: The CORS standard forbids setting `Access-Control-Allow-Origin: *` when `Access-Control-Allow-Credentials` is `true`. If you configure this combination, Spidey will log a warning at startup and automatically fallback to echoing the requesting client's `Origin` header instead.
 - **Cache Poisoning Prevention**: When reflecting specific origins dynamically, Spidey automatically sets the `Vary: Origin` header. This tells CDNs, reverse proxies, and browsers to cache separate copies of the response for different origins, preventing cache poisoning and accidental DoS.
+- **Safe Allowed Headers**: To prevent request header spoofing/bypassing (e.g., custom admin tokens, IP forwarding header injections), Spidey no longer echoes back the client-requested `Access-Control-Request-Headers` when `AllowHeaders` is left empty. Instead, it enforces a secure default list of common safe headers (`Content-Type`, `Authorization`, `Accept`, `Accept-Language`, `Content-Language`, and `X-Spidey-Request`).
 
 ---
 
