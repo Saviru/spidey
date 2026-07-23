@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -26,6 +27,10 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 		}
 	}
 
+	if allowAllOrigins && config.AllowCredentials {
+		log.Println("[Warning] CORS configuration has AllowOrigins=['*'] and AllowCredentials=true. This is a CORS spec violation. Spidey will automatically echo the requesting Origin header instead of '*' to prevent browser rejection.")
+	}
+
 	methodsStr := strings.Join(config.AllowMethods, ", ")
 	if methodsStr == "" {
 		methodsStr = "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
@@ -42,7 +47,11 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 			if origin != "" {
 				// Set Access-Control-Allow-Origin
 				if allowAllOrigins {
-					w.Header().Set("Access-Control-Allow-Origin", "*")
+					if config.AllowCredentials {
+						w.Header().Set("Access-Control-Allow-Origin", origin)
+					} else {
+						w.Header().Set("Access-Control-Allow-Origin", "*")
+					}
 				} else {
 					for _, allowedOrigin := range config.AllowOrigins {
 						if allowedOrigin == origin {
