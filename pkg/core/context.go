@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -181,6 +182,28 @@ func (c *Context) HTML(status int, htmlFragment string) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.Writer.WriteHeader(status)
 	c.Writer.Write([]byte(htmlFragment))
+}
+
+// HTMLf formats a string according to a format specifier and sends it as HTML.
+// To prevent XSS, any string arguments are automatically escaped using html.EscapeString.
+func (c *Context) HTMLf(status int, format string, args ...any) {
+	for i, arg := range args {
+		if s, ok := arg.(string); ok {
+			args[i] = html.EscapeString(s)
+		}
+	}
+	c.HTML(status, fmt.Sprintf(format, args...))
+}
+
+// Sendf formats a string and sends it as raw HTML or text.
+// Any string arguments are automatically HTML-escaped.
+func (c *Context) Sendf(format string, args ...any) {
+	for i, arg := range args {
+		if s, ok := arg.(string); ok {
+			args[i] = html.EscapeString(s)
+		}
+	}
+	c.Send(fmt.Sprintf(format, args...))
 }
 
 // sends an HTTP redirect to the specified URL (302 Found)
