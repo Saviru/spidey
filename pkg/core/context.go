@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/gorilla/websocket"
 	json "github.com/goccy/go-json"
+	"github.com/gorilla/websocket"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -139,7 +139,7 @@ func (c *Context) Upgrade() (*SpideyConn, error) {
 			}
 			return false
 		}
-	} // else CheckOrigin is nil, meaning gorilla/websocket enforces same-origin safely
+	} // else CheckOrigin is nil
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {

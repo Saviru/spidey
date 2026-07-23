@@ -98,3 +98,22 @@ In Go, an unhandled panic in a goroutine or route handler can crash the entire a
 The built-in `RateLimit` middleware is secure against IP spoofing:
 - **Same IP Check**: By default, the rate limiter uses the raw TCP connection's remote IP address (`RemoteAddr`). It ignores the `X-Forwarded-For` header to prevent clients from spoofing their IP.
 - **Proxy Mode**: If you run Spidey behind a trusted reverse proxy (like Nginx or Cloudflare), you must explicitly set `TrustProxy: true` in your `RateLimitConfig` so the limiter knows it can safely read the proxy header.
+
+---
+
+## 8. Request Body Size Limits
+
+To protect your server against Denial of Service (DoS) and Out-Of-Memory (OOM) crashes caused by malicious multi-gigabyte payloads:
+- Spidey automatically limits the incoming request body inside the `c.BindJSON()` method to **10 MB** by default using `http.MaxBytesReader`.
+- If a client attempts to send a payload exceeding this size, the reader returns an error, and the JSON decoder safely aborts execution.
+- You can customize this threshold globally by updating the `core.MaxJSONBodySize` variable (specified in bytes) at application startup:
+
+```go
+func main() {
+    // Increase JSON body limit to 50MB
+    core.MaxJSONBodySize = 50 * 1024 * 1024
+    
+    app := core.New()
+    // ...
+}
+```
