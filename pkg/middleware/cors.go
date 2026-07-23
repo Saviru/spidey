@@ -49,6 +49,7 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 				if allowAllOrigins {
 					if config.AllowCredentials {
 						w.Header().Set("Access-Control-Allow-Origin", origin)
+						w.Header().Add("Vary", "Origin")
 					} else {
 						w.Header().Set("Access-Control-Allow-Origin", "*")
 					}
@@ -56,6 +57,7 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 					for _, allowedOrigin := range config.AllowOrigins {
 						if allowedOrigin == origin {
 							w.Header().Set("Access-Control-Allow-Origin", origin)
+							w.Header().Add("Vary", "Origin")
 							break
 						}
 					}
@@ -79,7 +81,7 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 				if headersStr != "" {
 					w.Header().Set("Access-Control-Allow-Headers", headersStr)
 				} else if reqHeaders := r.Header.Get("Access-Control-Request-Headers"); reqHeaders != "" {
-					// If no specific headers are configured, just echo back what the client requested
+					// If no specific headers are configured, echo back what the client requested
 					w.Header().Set("Access-Control-Allow-Headers", reqHeaders)
 				}
 
@@ -87,12 +89,11 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 					w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", config.MaxAge))
 				}
 
-				// Terminate the preflight request here with a 204 No Content
+				// Terminate preflight request with 204 No Content
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 
-			// Pass to the next handler
 			next.ServeHTTP(w, r)
 		})
 	}
