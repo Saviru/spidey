@@ -128,3 +128,11 @@ To prevent connection exhaustion and Slowloris/Slow-POST attacks where an attack
 - **ReadTimeout**: **30 seconds** (limits the total time to read the entire request, including the body).
 - **WriteTimeout**: **30 seconds** (limits the total time for response writing).
 - **IdleTimeout**: **120 seconds** (keeps idle keep-alive connections open for up to 2 minutes before closing them).
+
+---
+
+## 10. Reverse Proxy Safety
+
+When forwarding requests using the built-in `Proxy` routing helper:
+- **Upstream Connection Timeouts**: Spidey configures a custom `http.Transport` for the reverse proxy with strict timeouts (e.g., 10s connection dial timeout, 15s response header timeout, 90s idle connection timeout). This prevents Slowloris attacks or unresponsive upstream services from holding connections open indefinitely and causing OOM.
+- **Information Leak Protection**: The default `httputil.ReverseProxy` error handler is overridden. Instead of dumping raw Go network errors and leaking internal infrastructure details (like internal IPs or DNS structures) to clients, Spidey logs the exact error internally and returns a clean, generic `502 Bad Gateway` response.
