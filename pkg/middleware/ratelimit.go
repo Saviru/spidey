@@ -13,13 +13,13 @@ import (
 
 type RateLimitConfig struct {
 	MaxRequests int           // Maximum tokens/requests
-	Window      time.Duration // Time window to refill tokens
-	Store       string        // "redis" (distributed) or "memory" (single-node)
-	TrustProxy  bool          // Whether to trust X-Forwarded-For header (default false)
+	Window      time.Duration // Refill time
+	Store       string        // redis(distributed) / memory(single-node)
+	TrustProxy  bool          // trust X-Forwarded-For header(default false)
 
-	KeyFunc    func(c *core.Context) string // Custom Key (e.g. API key)
+	KeyFunc    func(c *core.Context) string // Custom Key
 	SkipFunc   func(c *core.Context) bool   // Bypass logic
-	RejectFunc func(c *core.Context)        // Custom JSON error response
+	RejectFunc func(c *core.Context)        // Error response
 }
 
 var memoryLimiters = sync.Map{}

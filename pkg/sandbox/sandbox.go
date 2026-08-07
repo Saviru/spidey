@@ -16,7 +16,7 @@ func EvalFrontmatter(script string, defaultData interface{}) (interface{}, error
 
 	_, err := i.Eval(script)
 	if err != nil {
-		return nil, fmt.Errorf("frontmatter syntax error: %v", err)
+		return nil, fmt.Errorf("Frontmatter syntax error: %v", err)
 	}
 
 	// Look for a standard Render() function defined by the user

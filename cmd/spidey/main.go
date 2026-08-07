@@ -128,6 +128,6 @@ func checkLatestVersion() {
 
 	if release.TagName != "" && release.TagName != currentVersion {
 		fmt.Printf("\nA new version of Spidey is available! (%s -> %s)\n", currentVersion, release.TagName)
-		fmt.Println("Run 'spidey update' to upgrade instantly.\n")
+		fmt.Println("Run 'spidey update' to upgrade instantly.")
 	}
 }
