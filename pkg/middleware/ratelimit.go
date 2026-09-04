@@ -13,23 +13,20 @@ import (
 
 type RateLimitConfig struct {
 	MaxRequests int           // Maximum tokens/requests
-	Window      time.Duration // Time window to refill tokens
-	Store       string        // "redis" (distributed) or "memory" (single-node)
+	Window      time.Duration // Refill time
+	Store       string        // redis(distributed) / memory(single-node)
+	TrustProxy  bool          // trust X-Forwarded-For header(default false)
 
-	KeyFunc    func(c *core.Context) string // Custom Key (e.g. API key)
+	KeyFunc    func(c *core.Context) string // Custom Key
 	SkipFunc   func(c *core.Context) bool   // Bypass logic
-	RejectFunc func(c *core.Context)        // Custom JSON error response
+	RejectFunc func(c *core.Context)        // Error response
 }
 
 var memoryLimiters = sync.Map{}
 
 // extracts the real IP address
 func DefaultKeyFunc(c *core.Context) string {
-	ip := c.Request.Header.Get("X-Forwarded-For")
-	if ip == "" {
-		ip = c.Request.RemoteAddr
-	}
-
+	ip := c.Request.RemoteAddr
 	if strings.Contains(ip, ":") {
 		ip = strings.Split(ip, ":")[0]
 	}
@@ -59,7 +56,23 @@ func RateLimit(config RateLimitConfig) func(*core.Context, func()) {
 		config.Window = time.Minute
 	}
 	if config.KeyFunc == nil {
-		config.KeyFunc = DefaultKeyFunc
+		config.KeyFunc = func(c *core.Context) string {
+			var ip string
+			if config.TrustProxy {
+				ip = c.Request.Header.Get("X-Forwarded-For")
+				if ip != "" {
+					// X-Forwarded-For can contain multiple IPs: "client, proxy1, proxy2"
+					ip = strings.TrimSpace(strings.Split(ip, ",")[0])
+				}
+			}
+			if ip == "" {
+				ip = c.Request.RemoteAddr
+			}
+			if strings.Contains(ip, ":") {
+				ip = strings.Split(ip, ":")[0]
+			}
+			return ip
+		}
 	}
 	if config.Store == "" {
 		config.Store = "memory"

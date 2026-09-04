@@ -35,12 +35,14 @@ The generated `spidey.config.json` allows you to customize the framework's behav
     "directories": {
         "publicDir": "public",
         "outputDir": "bin/server"
-    }
+    },
+    "wsAllowedOrigins": []
 }
 ```
 - **`port`**: The port your server and development watcher will run on.
 - **`publicDir`**: The folder Spidey uses to output generated CSS, JS islands, and serve static files.
 - **`outputDir`**: The filepath where the final `go build` executable binary will be saved.
+- **`wsAllowedOrigins`**: A list of allowed cross-origin domains for WebSockets (leave empty to enforce Same-Origin Policy).
 
 ## Development
 

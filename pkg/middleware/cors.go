@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -26,9 +27,17 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 		}
 	}
 
+	if allowAllOrigins && config.AllowCredentials {
+		log.Println("[Warning] CORS configuration has AllowOrigins=['*'] and AllowCredentials=true. This is a CORS spec violation. Spidey will automatically echo the requesting Origin header instead of '*' to prevent browser rejection.")
+	}
+
 	methodsStr := strings.Join(config.AllowMethods, ", ")
 	if methodsStr == "" {
 		methodsStr = "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
+	}
+
+	if len(config.AllowHeaders) == 0 {
+		config.AllowHeaders = []string{"Content-Type", "Authorization", "Accept", "Accept-Language", "Content-Language", "X-Spidey-Request"}
 	}
 
 	headersStr := strings.Join(config.AllowHeaders, ", ")
@@ -42,11 +51,17 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 			if origin != "" {
 				// Set Access-Control-Allow-Origin
 				if allowAllOrigins {
-					w.Header().Set("Access-Control-Allow-Origin", "*")
+					if config.AllowCredentials {
+						w.Header().Set("Access-Control-Allow-Origin", origin)
+						w.Header().Add("Vary", "Origin")
+					} else {
+						w.Header().Set("Access-Control-Allow-Origin", "*")
+					}
 				} else {
 					for _, allowedOrigin := range config.AllowOrigins {
 						if allowedOrigin == origin {
 							w.Header().Set("Access-Control-Allow-Origin", origin)
+							w.Header().Add("Vary", "Origin")
 							break
 						}
 					}
@@ -69,21 +84,17 @@ func CORS(config CORSConfig) func(http.Handler) http.Handler {
 
 				if headersStr != "" {
 					w.Header().Set("Access-Control-Allow-Headers", headersStr)
-				} else if reqHeaders := r.Header.Get("Access-Control-Request-Headers"); reqHeaders != "" {
-					// If no specific headers are configured, just echo back what the client requested
-					w.Header().Set("Access-Control-Allow-Headers", reqHeaders)
 				}
 
 				if config.MaxAge > 0 {
 					w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", config.MaxAge))
 				}
 
-				// Terminate the preflight request here with a 204 No Content
+				// Terminate preflight request with 204 No Content
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}
 
-			// Pass to the next handler
 			next.ServeHTTP(w, r)
 		})
 	}

@@ -58,7 +58,7 @@ func main() {
 
     // Enable CORS globally
     app.UseGlobal(middleware.CORS(middleware.CORSConfig{
-        AllowOrigins:     []string{"*"}, // Or specific domains: {"https://example.com"}
+        AllowOrigins:     []string{"https://example.com"}, // Specific domains. Note: "*" wildcard with AllowCredentials=true is a spec violation and will be browser-rejected.
         AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
         AllowHeaders:     []string{"Content-Type", "Authorization"},
         AllowCredentials: true,
@@ -128,6 +128,8 @@ Spidey includes an enterprise-grade Distributed Rate Limiting Middleware. It use
 ### Basic Usage
 The most common use case is limiting requests per IP address. Spidey injects standard `X-RateLimit-*` HTTP headers automatically!
 
+> **Security Note (Reverse Proxies)**: By default, Spidey securely uses the raw TCP connection IP (`RemoteAddr`) and ignores headers like `X-Forwarded-For` to prevent trivial IP spoofing attacks. If you are running Spidey behind a trusted reverse proxy (like Nginx, AWS, or Cloudflare), you must explicitly set `TrustProxy: true` in your `RateLimitConfig` so the limiter safely extracts the client IP from the headers.
+
 ```go
 import (
     "time"
@@ -139,6 +141,21 @@ import (
 //spidey:route GET /api/fragile-endpoint
 func GetFragileData(c *core.Context) {
     c.JSON(200, map[string]string{"data": "You are within limits!"})
+}
+```
+
+## CSRF Protection
+
+Spidey natively supports the OWASP Custom Request Header Defense mechanism for API-driven CSRF protection.
+
+The client-side S-Tags engine automatically attaches an `X-Spidey-Request: true` header to all `fetch()` requests. To enforce this protection on your backend routes and block malicious Cross-Site Request Forgery attempts, apply the `middleware.CSRF()` middleware to your state-changing API endpoints (POST, PUT, DELETE):
+
+```go
+//spidey:middleware middleware.CSRF()
+//spidey:route POST /api/transfer-funds
+func TransferFunds(c *core.Context) {
+    // This route is fully protected against CSRF attacks!
+    c.JSON(200, map[string]string{"status": "success"})
 }
 ```
 

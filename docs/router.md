@@ -14,7 +14,9 @@ The `core.Context` provides various helpers for handling requests and generating
 - `c.PureJSON(status, data)`: Sends JSON without Go automatically escaping HTML characters (like `<` and `>`).
 - `c.JSONP(status, data, callback)`: Wraps the JSON response inside a Javascript callback function.
 - `c.Send("text")`: Sends raw text or HTML string.
+- `c.Sendf(format, args...)`: Formats a string and sends it as raw text/HTML, automatically HTML-escaping string arguments to prevent XSS.
 - `c.HTML(status, "html")`: Sends an HTML fragment with the proper `text/html` content type. Extremely useful when returning UI updates for `s-tags`.
+- `c.HTMLf(status, format, args...)`: Formats and sends an HTML fragment, automatically HTML-escaping string arguments to prevent XSS.
 
 ### Parsing Requests
 

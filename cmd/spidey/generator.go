@@ -34,14 +34,12 @@ func initProject(projectName string) {
 
 	// Create workspace folders
 	fmt.Println("Creating workspace folders...")
-	dirs := []string{"api", "api/handlers", "api/spidey", "api/spidey/pages", "api/spidey/routes", "pages", "components", "public"}
+	dirs := []string{"api", "api/handlers", "internal/spidey", "internal/spidey/pages", "internal/spidey/routes", "pages", "components", "public"}
 	for _, dir := range dirs {
 		os.MkdirAll(dir, 0755)
 	}
 
-
-
-	// api/spidey/spidey_base.go
+	// internal/spidey/spidey_base.go
 	baseCodeBytes, err := starterTemplates.ReadFile("templates/base.go")
 	if err == nil {
 		baseCode := string(baseCodeBytes)
@@ -49,13 +47,13 @@ func initProject(projectName string) {
 		baseCode = strings.Replace(baseCode, "package pages", "package spidey", 1)
 		baseCode = strings.TrimSpace(baseCode) + "\n"
 
-		createFileIfNotExists("api/spidey/spidey_base.go", []byte(baseCode))
+		createFileIfNotExists("internal/spidey/spidey_base.go", []byte(baseCode))
 	} else {
 		fmt.Println("Warning: Failed to create base file.")
 	}
 
 	// .gitignore
-	gitignore := "api/spidey/\nbin/\n.env\n"
+	gitignore := "internal/spidey/\nbin/\n.env\n"
 	createFileIfNotExists(".gitignore", []byte(gitignore))
 
 	// spidey.config.json
@@ -99,7 +97,7 @@ func initProject(projectName string) {
 	routesByte, err := starterTemplates.ReadFile("templates/routes.txt")
 	if err == nil {
 		routesCode := fmt.Sprintf(string(routesByte), importPath)
-		createFileIfNotExists("api/spidey/routes/routes.go", []byte(routesCode))
+		createFileIfNotExists("internal/spidey/routes/routes.go", []byte(routesCode))
 	} else {
 		fmt.Println("Warning: Failed to inject default route. Please run 'spidey dev' to fix it.")
 	}

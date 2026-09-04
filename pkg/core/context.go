@@ -2,19 +2,21 @@ package core
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 
 	json "github.com/goccy/go-json"
+	"github.com/gorilla/websocket"
 
 	"github.com/go-playground/validator/v10"
 )
 
 var validate = validator.New()
+var jsonpCallbackRegexp = regexp.MustCompile(`[^a-zA-Z0-9_\.]`)
 
-// Context is the most important part of Spidey. It allows us to pass variables between middleware,
-// manage the request, send responses, and upgrade to WebSockets.
 type Context struct {
 	Writer     http.ResponseWriter
 	Request    *http.Request
@@ -108,13 +110,37 @@ func (c *Context) PureJSON(status int, data interface{}) {
 func (c *Context) JSONP(status int, data interface{}, callback string) {
 	c.Writer.Header().Set("Content-Type", "application/javascript")
 	c.Writer.WriteHeader(status)
-	fmt.Fprintf(c.Writer, "%s(", callback)
+	safeCallback := jsonpCallbackRegexp.ReplaceAllString(callback, "")
+	if safeCallback == "" {
+		safeCallback = "callback"
+	}
+	fmt.Fprintf(c.Writer, "%s(", safeCallback)
 	json.NewEncoder(c.Writer).Encode(data)
 	fmt.Fprint(c.Writer, ")")
 }
 
 // upgrades the HTTP connection to a WebSocket connection
 func (c *Context) Upgrade() (*SpideyConn, error) {
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
+	if len(c.App.Config.WSAllowedOrigins) > 0 {
+		upgrader.CheckOrigin = func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				return true // allow non-browser clients
+			}
+			for _, allowed := range c.App.Config.WSAllowedOrigins {
+				if allowed == "*" || allowed == origin {
+					return true
+				}
+			}
+			return false
+		}
+	} // else CheckOrigin is nil
+
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return nil, err
@@ -181,6 +207,26 @@ func (c *Context) HTML(status int, htmlFragment string) {
 	c.Writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.Writer.WriteHeader(status)
 	c.Writer.Write([]byte(htmlFragment))
+}
+
+// formats a string according to a format specifier and sends it as HTML.
+func (c *Context) HTMLf(status int, format string, args ...any) {
+	for i, arg := range args {
+		if s, ok := arg.(string); ok {
+			args[i] = html.EscapeString(s)
+		}
+	}
+	c.HTML(status, fmt.Sprintf(format, args...))
+}
+
+// formats a string and sends it as raw HTML or text.
+func (c *Context) Sendf(format string, args ...any) {
+	for i, arg := range args {
+		if s, ok := arg.(string); ok {
+			args[i] = html.EscapeString(s)
+		}
+	}
+	c.Send(fmt.Sprintf(format, args...))
 }
 
 // sends an HTTP redirect to the specified URL (302 Found)

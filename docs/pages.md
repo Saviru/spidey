@@ -27,14 +27,18 @@ pages/
 ```
 These ignored `.spidey` files are still compiled as components and can be used inside your pages (e.g., `<_components/Sidebar />` or `{{ template "_components/Sidebar" . }}`).
 
-## Basic Page and Go Frontmatter
+## Basic Page and Secure Go Frontmatter
 
-Spidey pages are not just static HTML; they are executed natively by Go. You can define Go data structures and backend logic at the top of your file using `---go ... ---` frontmatter.
+Spidey pages are not just static HTML; they are executed natively by Go. You can define backend logic at the top of your file using `---go ... ---` frontmatter.
+
+To securely pass data to your HTML template, define a `Render()` function that returns a map or struct containing your data. This code is executed dynamically in a heavily restricted sandbox to prevent Server-Side Template Injection (SSTI) and Arbitrary Code Execution.
 
 ```html
 ---go
-type PageData struct {
-    Message string
+func Render() map[string]interface{} {
+    return map[string]interface{}{
+        "Message": "World",
+    }
 }
 ---
 <div>
@@ -42,7 +46,7 @@ type PageData struct {
 </div>
 ```
 
-The code inside the frontmatter block is extracted and injected into the transpiled server file. This means you can define structs, import packages, or write helper functions specific to that route.
+Because the frontmatter runs inside a secure sandbox, dangerous standard library packages (like `os/exec` or `syscall`) are completely blocked. However, you can safely use standard libraries like `strings`, `math`, or `fmt` to build dynamic data for that specific route.
 
 ## Dynamic Routes
 

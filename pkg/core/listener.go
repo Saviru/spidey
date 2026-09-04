@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 )
 
 func (a *App) Listen(port ...any) error {
@@ -45,5 +46,14 @@ func (a *App) Listen(port ...any) error {
 		finalHandler = a.globalMiddlewares[i](finalHandler)
 	}
 
-	return http.Serve(listener, finalHandler)
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           finalHandler,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	return server.Serve(listener)
 }

@@ -1,18 +1,21 @@
 package core
 
 import (
+	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	json "github.com/goccy/go-json"
 )
 
 type Middleware func(*Context, func())
 
-// WrapStd natively adapts standard Go middlewares (func(http.Handler) http.Handler) into Spidey's format
+// adapts standard Go middlewares (func(http.Handler) http.Handler) into Spidey's format
 func WrapStd(std func(http.Handler) http.Handler) Middleware {
 	return func(c *Context, next func()) {
 		nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +73,7 @@ func New() *App {
 	app.RouterGroup = RouterGroup{
 		prefix:      "",
 		app:         app,
-		middlewares: nil,
+		middlewares: []Middleware{Recover()},
 	}
 	return app
 }
@@ -159,7 +162,7 @@ func (g *RouterGroup) Handle(method, path string, handlers ...any) *Route {
 	return &Route{Path: fullPath}
 }
 
-// Proxy routes everything under a path to a microservice
+// routes everything under a path to a microservice
 func (g *RouterGroup) Proxy(path string, targetURL string) {
 	target, err := url.Parse(targetURL)
 	if err != nil {
@@ -167,8 +170,26 @@ func (g *RouterGroup) Proxy(path string, targetURL string) {
 	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
 
-	// Override the Director to rewrite the Host header,
-	// preventing 403 Forbidden errors from Cloudflare/external APIs.
+	proxy.Transport = &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 15 * time.Second,
+	}
+
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf("Spidey Reverse Proxy Error (target %s): %v", targetURL, err)
+		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte("Bad Gateway: Upstream server is unavailable or timed out."))
+	}
+
+	// Override the Director to rewrite the Host header
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
@@ -222,7 +243,7 @@ func (a *App) Static(prefix, dir string) {
 	a.mux.Handle(prefix, http.StripPrefix(prefix, http.FileServer(http.Dir(dir))))
 }
 
-// UseGlobal applies standard Go middlewares to the root multiplexer.
+// applies standard Go middlewares to the root multiplexer.
 func (a *App) UseGlobal(middleware func(http.Handler) http.Handler) {
 	a.globalMiddlewares = append(a.globalMiddlewares, middleware)
 }

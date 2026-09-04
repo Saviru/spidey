@@ -254,9 +254,9 @@ func generateAPIRoutes(projectDir string) {
 			return nil
 		})
 	}
-	
+
 	apiRoutesFile := filepath.Join(projectDir, "api", "spidey", "routes", "api_routes.go")
-	
+
 	var importsBuilder strings.Builder
 	for path, alias := range importAliases {
 		importsBuilder.WriteString(fmt.Sprintf("\t%s \"%s\"\n", alias, path))
@@ -544,7 +544,11 @@ document.addEventListener("DOMContentLoaded", () => {
 			const swapStyle = el.getAttribute("s-swap") || "innerHTML";
 			
 			try {
-				let options = {};
+				let options = {
+					headers: {
+						"X-Spidey-Request": "true"
+					}
+				};
 				if (isPost) {
 					options.method = "POST";
 					let bodyData = new FormData();
@@ -588,6 +592,26 @@ document.addEventListener("DOMContentLoaded", () => {
 				const parser = new DOMParser();
 				const doc = parser.parseFromString(html, "text/html");
 				
+				// Client-Side DOM Sanitization
+				const sanitizeNode = (node) => {
+					if (node.nodeType === 1) { // ELEMENT_NODE
+						if (['SCRIPT', 'OBJECT', 'EMBED', 'IFRAME'].includes(node.tagName)) {
+							node.remove();
+							return;
+						}
+						for (let i = node.attributes.length - 1; i >= 0; i--) {
+							const attr = node.attributes[i];
+							if (attr.name.toLowerCase().startsWith('on')) {
+								node.removeAttribute(attr.name);
+							} else if (attr.value.toLowerCase().trim().startsWith('javascript:')) {
+								node.removeAttribute(attr.name);
+							}
+						}
+						Array.from(node.childNodes).forEach(sanitizeNode);
+					}
+				};
+				sanitizeNode(doc.documentElement);
+				
 				doc.querySelectorAll('[s-swap-oob]').forEach(oobEl => {
 					const oobId = oobEl.getAttribute('id');
 					if (oobId) {
@@ -596,7 +620,7 @@ document.addEventListener("DOMContentLoaded", () => {
 							existingEl.outerHTML = oobEl.outerHTML;
 						}
 					}
-					oobEl.remove(); // Remove from temporary DOM so it doesn't go into main target
+					oobEl.remove();
 				});
 				
 				const remainingHtml = doc.body.innerHTML;
@@ -618,7 +642,7 @@ document.addEventListener("DOMContentLoaded", () => {
 							// Determine the view-transition-name to use
 							let activeName = transitionName;
 							if (activeName === "true" || activeName === "") {
-								activeName = "spidey-fade"; // default smooth fade
+								activeName = "spidey-fade";
 							}
 							
 							targetEl.style.viewTransitionName = activeName;

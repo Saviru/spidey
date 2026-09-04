@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"log"
-	"net/http"
 	"sync"
 	"time"
 
@@ -17,15 +16,6 @@ const (
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 512 * 1024 // 512 KB
 )
-
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	// Allow all origins by default for Spidey
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
 
 type SpideyConn struct {
 	ID        string
