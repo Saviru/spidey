@@ -34,7 +34,7 @@ func initProject(projectName string) {
 
 	// Create workspace folders
 	fmt.Println("Creating workspace folders...")
-	dirs := []string{"api", "api/handlers", "internal/spidey", "internal/spidey/pages", "internal/spidey/routes", "pages", "components", "public"}
+	dirs := []string{"api", "internal/spidey", "internal/spidey/pages", "internal/spidey/routes", "pages", "components", "public"}
 	for _, dir := range dirs {
 		os.MkdirAll(dir, 0755)
 	}

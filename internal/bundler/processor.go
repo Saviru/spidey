@@ -283,7 +283,7 @@ func generateAPIRoutes(projectDir string) {
 
 func transpilePages(projectDir string, appLayoutStr string, componentsStr string, globalStyles *strings.Builder, aotJSBuffer *strings.Builder) error {
 	pagesDir := filepath.Join(projectDir, "pages")
-	pagesGenDir := filepath.Join(projectDir, "api", "spidey", "pages")
+	pagesGenDir := filepath.Join(projectDir, "internal", "spidey", "pages")
 	routesGenDir := filepath.Join(projectDir, "internal", "spidey", "routes")
 
 	os.MkdirAll(pagesGenDir, 0755)
@@ -297,7 +297,7 @@ func transpilePages(projectDir string, appLayoutStr string, componentsStr string
 	routesBuilder.WriteString("import (\n")
 	routesBuilder.WriteString("\t\"github.com/saviru/spidey/pkg/core\"\n")
 	routesBuilder.WriteString(fmt.Sprintf("\t\"%s/internal/spidey\"\n", modName))
-	routesBuilder.WriteString(fmt.Sprintf("\t_ \"%s/api/spidey/pages\"\n", modName))
+	routesBuilder.WriteString(fmt.Sprintf("\t_ \"%s/internal/spidey/pages\"\n", modName))
 	routesBuilder.WriteString(")\n\n")
 	routesBuilder.WriteString("func RegisterRoutes(app *core.App) {\n")
 
