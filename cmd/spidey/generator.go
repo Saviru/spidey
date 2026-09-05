@@ -27,7 +27,7 @@ func initProject(projectName string) {
 	}
 
 	fmt.Println("Fetching dependencies...")
-	getCmd := exec.Command("go", "get", "github.com/goccy/go-json", "github.com/go-playground/validator/v10")
+	getCmd := exec.Command("go", "get", "github.com/goccy/go-json", "github.com/go-playground/validator/v10", "github.com/saviru/spidey@v0.26.904", "github.com/traefik/yaegi/interp", "github.com/traefik/yaegi/stdlib", "github.com/redis/go-redis/v9", "github.com/gorilla/websocket")
 	getCmd.Stdout = os.Stdout
 	getCmd.Stderr = os.Stderr
 	getCmd.Run()
