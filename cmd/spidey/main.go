@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime/debug"
 	"time"
 
 	"github.com/saviru/spidey/internal/bundler"
+	"github.com/saviru/spidey/internal/cli"
 	"github.com/saviru/spidey/internal/config"
 	"github.com/saviru/spidey/internal/dev"
 )
@@ -20,7 +22,7 @@ var starterTemplates embed.FS
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: spidey [init|dev|build|version|update]")
+		cli.Error("init", "No command provided\n\nUsage: spidey [init|dev|build|version|update]")
 		os.Exit(1)
 	}
 
@@ -35,9 +37,9 @@ func main() {
 	case "version", "-v", "--version":
 		info, ok := debug.ReadBuildInfo()
 		if ok && info.Main.Version != "" {
-			fmt.Printf("Spidey CLI %s\n", info.Main.Version)
+			cli.Ready(fmt.Sprintf("Spidey CLI %s", info.Main.Version))
 		} else {
-			fmt.Println("Spidey CLI (development build)")
+			cli.Ready("Spidey CLI (development build)")
 		}
 	case "init", "hatch":
 		var projectName string
@@ -46,37 +48,45 @@ func main() {
 		}
 		initProject(projectName)
 	case "dev", "weave":
-		fmt.Println("Starting Spidey development environment...")
+		cli.Info("dev", "Starting development server...")
 		cfg := config.LoadConfig(currentDir)
 		// Pass starterTemplates to the watcher
 		dev.StartWatcher(currentDir, starterTemplates, cfg)
 	case "build", "wrap":
-		fmt.Println("Spidey: Transpiling pages...")
+		cli.Info("build", "Transpiling pages...")
 		cfg := config.LoadConfig(currentDir)
 		// Pass starterTemplates to the build engine
 		if err := bundler.ProcessPages(currentDir, starterTemplates, "", cfg); err != nil {
-			fmt.Printf("Engine Error: %v\n", err)
+			cli.Error("build", fmt.Sprintf("Engine Error: %v", err))
 			os.Exit(1)
 		}
 
-		fmt.Println("Spidey: Compiling final binary...")
+		cli.Info("build", "Compiling final binary...")
 		if err := bundler.CompileBinary(currentDir, cfg); err != nil {
-			fmt.Printf("Compilation Error: %v\n", err)
+			cli.Error("build", fmt.Sprintf("Compilation Error: %v", err))
 			os.Exit(1)
 		}
 
-		fmt.Printf("Build successful! Executable is in ./%s\n", cfg.Directories.OutputDir)
+		outPath := filepath.Join(currentDir, cfg.Directories.OutputDir+cli.DetectOS())
+		displayPath := "./" + cfg.Directories.OutputDir + cli.DetectOS()
+
+		sizeStr := ""
+		if fi, err := os.Stat(outPath); err == nil {
+			sizeStr = fmt.Sprintf(" (%s)", cli.FormatFileSize(fi.Size()))
+		}
+
+		cli.Success("build", fmt.Sprintf("Compilation successful! Output: %s%s", displayPath, sizeStr))
 	case "export", "shed":
-		fmt.Println("Spidey: Transpiling pages for static export...")
+		cli.Info("build", "Transpiling pages for static export...")
 		cfg := config.LoadConfig(currentDir)
 		if err := bundler.ProcessPages(currentDir, starterTemplates, "", cfg); err != nil {
-			fmt.Printf("Engine Error: %v\n", err)
+			cli.Error("build", fmt.Sprintf("Engine Error: %v", err))
 			os.Exit(1)
 		}
 
-		fmt.Println("Spidey: Compiling temporary SSG binary...")
+		cli.Info("build", "Compiling temporary SSG binary...")
 		if err := bundler.CompileBinary(currentDir, cfg); err != nil {
-			fmt.Printf("Compilation Error: %v\n", err)
+			cli.Error("build", fmt.Sprintf("Compilation Error: %v", err))
 			os.Exit(1)
 		}
 
@@ -86,21 +96,21 @@ func main() {
 		exportCmd.Stdout = os.Stdout
 		exportCmd.Stderr = os.Stderr
 		if err := exportCmd.Run(); err != nil {
-			fmt.Printf("Export Error: %v\n", err)
+			cli.Error("build", fmt.Sprintf("Export Error: %v", err))
 			os.Exit(1)
 		}
 	case "update":
-		fmt.Println("Downloading the latest version...")
+		cli.Info("update", "Downloading the latest version...")
 		cmd := exec.Command("go", "install", "github.com/saviru/spidey/cmd/spidey@latest")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
-			fmt.Printf("Update Error: %v\n", err)
+			cli.Error("update", fmt.Sprintf("Update Error: %v", err))
 			os.Exit(1)
 		}
-		fmt.Println("Update successful!")
+		cli.Ready("Update successful!")
 	default:
-		fmt.Printf("Unknown command: %s\n", command)
+		cli.Error("init", fmt.Sprintf("Unknown command: %s\n\n  Usage: spidey [init|dev|build|version|update]"))
 	}
 }
 
@@ -127,7 +137,7 @@ func checkLatestVersion() {
 	}
 
 	if release.TagName != "" && release.TagName != currentVersion {
-		fmt.Printf("\nA new version of Spidey is available! (%s -> %s)\n", currentVersion, release.TagName)
-		fmt.Println("Run 'spidey update' to upgrade instantly.")
+		cli.Warn("update", fmt.Sprintf("A new version of Spidey is available! (%s -> %s)", currentVersion, release.TagName))
+		cli.Warn("update", "Run 'spidey update' to upgrade instantly.")
 	}
 }
