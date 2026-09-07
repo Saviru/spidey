@@ -110,7 +110,7 @@ func main() {
 		}
 		cli.Ready("Update successful!")
 	default:
-		cli.Error("init", fmt.Sprintf("Unknown command: %s\n\n  Usage: spidey [init|dev|build|version|update]"))
+		cli.Error("init", fmt.Sprintf("Unknown command: %s\n\n  Usage: spidey [init|dev|build|version|update]", command))
 	}
 }
 
