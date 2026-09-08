@@ -17,7 +17,7 @@ func TranspileToGo(modName string, componentName string, rawContent string, appL
 		globalStyles.WriteString(parsed.Styles + "\n")
 	}
 
-	re := regexp.MustCompile(`(?s)<([A-Z][a-zA-Z0-9]*)([^>]*)/>`)
+	re := regexp.MustCompile(`(?s)<([A-Za-z_][a-zA-Z0-9_/-]*)([^>]*)/>`)
 
 	replaceFunc := func(match string) string {
 		submatch := re.FindStringSubmatch(match)
