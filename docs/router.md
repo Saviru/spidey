@@ -49,13 +49,12 @@ api.POST("/login", LoginHandler)
 
 ## Middlewares
 
-Middlewares can be applied globally, to route groups, or to specific routes. Spidey's custom router natively supports three types of middleware formats:
+Middlewares can be applied globally, to route groups, or to specific routes. Spidey's custom router natively supports two middleware formats:
 
-1. **Spidey Middleware**: `func(*core.Context, func())`
+1. **Spidey Middleware**: `func(*core.Context, func())` (or `core.Middleware`)
 2. **Standard Go Middleware**: `func(http.Handler) http.Handler`
-3. **Standard Handlers**: `func(*core.Context)`
 
-Spidey automatically wraps standard Go middlewares using the `router.WrapStd()` function, allowing you to use existing ecosystem middlewares out-of-the-box!
+Spidey automatically adapts standard Go middlewares using the `core.WrapStd()` helper, allowing you to use existing ecosystem middlewares out-of-the-box!
 
 ```go
 // Using multiple middlewares on a group
