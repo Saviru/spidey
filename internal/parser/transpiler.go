@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/saviru/spidey/pkg/sandbox"
 )
 
 // converts .spidey into .go
@@ -15,6 +17,12 @@ func TranspileToGo(modName string, componentName string, rawContent string, appL
 
 	if parsed.Styles != "" && globalStyles != nil {
 		globalStyles.WriteString(parsed.Styles + "\n")
+	}
+
+	if parsed.GoLogic != "" {
+		if err := sandbox.ValidateFrontmatter(parsed.GoLogic); err != nil {
+			return "", fmt.Errorf("[%s] %w", componentName, err)
+		}
 	}
 
 	re := regexp.MustCompile(`(?s)<([A-Za-z_][a-zA-Z0-9_/-]*)([^>]*)/>`)
@@ -60,21 +68,23 @@ func TranspileToGo(modName string, componentName string, rawContent string, appL
 	}
 	builder.WriteString(")\n\n")
 
-	// Escape backticks in the user's frontmatter
-	safeGoLogic := strings.ReplaceAll(parsed.GoLogic, "`", "` + \"`\" + `")
+	funcName := "render_" + strings.ReplaceAll(strings.ReplaceAll(strings.ReplaceAll(componentName, "/", "_"), "-", "_"), "[", "_")
+	funcName = strings.ReplaceAll(funcName, "]", "_")
 
-	// Generate the auto-registering init block
+	hasRenderFunc := regexp.MustCompile(`\bfunc\s+Render\s*\(`).MatchString(parsed.GoLogic)
+
+	if parsed.GoLogic != "" {
+		// Rename func Render(...) to func render_pageName(...)
+		renamedLogic := regexp.MustCompile(`\bfunc\s+Render\s*\(`).ReplaceAllString(parsed.GoLogic, "func "+funcName+"(")
+		builder.WriteString(renamedLogic + "\n")
+	}
+
 	builder.WriteString("func init() {\n")
 	builder.WriteString(fmt.Sprintf("\tspidey.Register(\"%s\", func(data interface{}) (string, error) {\n", componentName))
 
-	// If the user wrote frontmatter, evaluate it dynamically in the sandbox
-	if parsed.GoLogic != "" {
-		builder.WriteString("\t\t// --- Evaluated Sandbox Frontmatter ---\n")
-		builder.WriteString(fmt.Sprintf("\t\tuserScript := `%s`\n", safeGoLogic))
-		builder.WriteString("\t\tsandboxData, err := sandbox.EvalFrontmatter(userScript, data)\n")
-		builder.WriteString("\t\tif err != nil {\n\t\t\treturn \"\", err\n\t\t}\n")
-		builder.WriteString("\t\tdata = sandboxData\n")
-		builder.WriteString("\t\t// -------------------------------------\n\n")
+	if hasRenderFunc {
+		builder.WriteString(fmt.Sprintf("\t\trenderResult := %s()\n", funcName))
+		builder.WriteString("\t\tdata = sandbox.MergeParams(renderResult, data)\n\n")
 	}
 
 	builder.WriteString(fmt.Sprintf("\t\ttmpl, err := template.New(\"%s\").Parse(`%s`)\n", componentName, safeHTML))
