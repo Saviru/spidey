@@ -31,7 +31,7 @@ These ignored `.spidey` files are still compiled as components and can be used i
 
 Spidey pages are not just static HTML; they are executed natively by Go. You can define backend logic at the top of your file using `---go ... ---` frontmatter.
 
-To securely pass data to your HTML template, define a `Render()` function that returns a map or struct containing your data. This code is executed dynamically in a heavily restricted sandbox to prevent Server-Side Template Injection (SSTI) and Arbitrary Code Execution.
+To securely pass data to your HTML template, define a `Render()` function that returns a map or struct containing your data. This code is validated ahead-of-time (AOT) through an AST security sandbox to prevent Server-Side Template Injection (SSTI) and Arbitrary Code Execution (ACE), and compiles directly into native Go for zero-overhead performance.
 
 ```html
 ---go
@@ -46,7 +46,7 @@ func Render() map[string]interface{} {
 </div>
 ```
 
-Because the frontmatter runs inside a secure sandbox, dangerous standard library packages (like `os/exec` or `syscall`) are completely blocked. However, you can safely use standard libraries like `strings`, `math`, or `fmt` to build dynamic data for that specific route.
+Spidey statically inspects frontmatter imports during build time. Dangerous packages (such as `os`, `os/exec`, `syscall`, and `unsafe`) are strictly blocked. You can safely use allowed standard libraries like `fmt`, `strings`, `strconv`, `time`, `math`, `encoding/json`, `html`, and `html/template` to build dynamic data for your routes.
 
 ## Dynamic Routes
 
@@ -59,7 +59,7 @@ Inside `pages/users/[id].spidey`, you can access the parameter by capitalizing t
 <p>Viewing data for User ID: {{.Id}}</p>
 ```
 
-If you have multiple parameters (e.g., `pages/users/[id]/posts/[postId].spidey`), they are accessible as `{{.Id}}` and `{{.PostId}}`.
+If you have multiple parameters (e.g., `pages/users/[id]/posts/[postId].spidey`), they are accessible as `{{.Id}}` and `{{.PostId}}`. If the page also defines `---go` frontmatter, URL parameters are automatically merged with the map returned by `Render()`, so both are accessible in the template.
 
 ## Layouts
 

@@ -76,11 +76,13 @@ Spidey's CORS middleware enforces correct specs and prevents caching issues:
 
 ---
 
-## 5. Runtime Sandboxing (ACE / SSTI)
+## 5. Build-Time AST Sandboxing (ACE / SSTI)
 
-Spidey supports frontmatter Go execution in `.spidey` layout files. To prevent Server-Side Template Injection (SSTI) and Arbitrary Code Execution (ACE) where a layout file could execute malicious system commands:
-- Spidey runs Go frontmatter in a secure, restricted `yaegi` interpreter sandbox.
-- System-level operations (like starting shell commands, reading environment variables, or accessing filesystem utilities) are locked down and disabled.
+Spidey supports backend Go logic directly inside `.spidey` files using `---go ... ---` frontmatter. To prevent Server-Side Template Injection (SSTI) and Arbitrary Code Execution (ACE):
+- **AOT AST Static Analysis**: Spidey inspects all frontmatter imports ahead-of-time (AOT) during compilation using Go's native `go/parser` and `go/ast` packages.
+- **Strict Import Allowlist**: Only safe standard libraries are permitted (`fmt`, `strings`, `strconv`, `time`, `math`, `math/rand`, `encoding/json`, `html`, `html/template`).
+- **Dangerous Operations Blocked**: Packages that could permit system access, shell execution, or memory manipulation (such as `os`, `os/exec`, `syscall`, `unsafe`, `plugin`, `runtime`) are strictly blocked. Attempting to import them immediately halts compilation with a security violation error.
+- **Native Performance**: Once validated, the code compiles directly into the native Go binary, providing sub-microsecond execution speed with zero runtime interpretation overhead.
 
 ---
 
