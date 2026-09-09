@@ -19,10 +19,9 @@ graph TD
         GoCompiler["Go Compiler"]
     end
 
-    subgraph hub [Generated Output]
-        GoRoutes["hub/pages/routes.go"]
-        GoPages["hub/pages/*_spidey.go"]
-        Router["hub/router/"]
+    subgraph gen [Generated Output]
+        GoRoutes["internal/spidey/routes/"]
+        GoPages["internal/spidey/pages/*_spidey.go"]
     end
     
     subgraph build [Final Build]
@@ -40,7 +39,6 @@ graph TD
     
     GoPages --> GoCompiler
     GoRoutes --> GoCompiler
-    Router --> GoCompiler
     API --> GoCompiler
     Config --> GoCompiler
     
@@ -88,25 +86,26 @@ When you build or run the development server, Spidey analyzes your project to ge
 1. **Frontend Routes (`pages/`)**: 
    Every `.spidey` file is compiled into a Go function. If you have a file at `pages/about.spidey`, the engine writes a Go router registration mapping `GET /about` to that template.
 2. **Backend Routes (`api/`)**:
-   Spidey scans your Go files for magic comments like `//spidey:route GET /api/data`. It extracts the method, path, and handler function, injecting them into the generated `hub/pages/routes.go`.
+   Spidey scans your Go files for magic comments like `//spidey:route GET /api/data`. It extracts the method, path, and handler function, injecting them into the generated `internal/spidey/routes/api_routes.go`.
 3. **Dynamic Parameters**:
-   Bracket syntax like `[id]` in filenames (e.g. `pages/users/[id].spidey`) or API comments is converted into regex-based parameters (e.g., `{$id}`) under the hood.
+   Bracket syntax like `[id]` in filenames (e.g. `pages/users/[id].spidey`) or API comments is converted into standard Go 1.22 path parameters (e.g., `{id}`) under the hood.
 
 ## Transpilation Details
 
 When you build or run dev, the Spidey engine (`internal/bundler` and `internal/parser`) scans your project:
 
-1. **Pages (`.spidey`)**: Transpiled into `hub/pages/` as Go files utilizing `html/template`. Frontmatter is extracted and injected as Go structs/logic.
+1. **Pages (`.spidey`)**: Transpiled into `internal/spidey/pages/` as Go files utilizing `html/template`. Frontmatter is AST-analyzed and compiled natively into the binary.
 2. **CSS**: `<style>` and `<style module>` blocks are parsed. CSS is scoped via AST-like parsing and extracted into a global `public/assets/spidey.css`.
 3. **AOT JavaScript**: Inline `@events` are converted into vanilla JavaScript listeners and bundled into `spidey-aot.js`.
-4. **API Routes**: Magic comments in `api/*.go` are regex-parsed to generate `hub/pages/routes.go`.
+4. **API Routes**: Magic comments in `api/*.go` are parsed to generate `internal/spidey/routes/api_routes.go`.
 
 ## Dev Watcher
 
 `internal/dev/watcher.go` uses `fsnotify` to monitor changes. When a `.spidey` file changes, Spidey selectively re-transpiles the templates, rebuilds the Go binary, restarts the server process, and pushes a Server-Sent Event (SSE) to the browser for live reload.
 
-## Hub Directory
+## Generated Output Directory (`internal/spidey/`)
 
-The `hub/` directory is generated entirely by Spidey and should be ignored in source control. It contains:
-- The `router/` package (copied from templates).
-- The transpiled Go templates and auto-generated route registration functions.
+The `internal/spidey/` directory is generated automatically during development and build, and is ignored in source control. It contains:
+- `internal/spidey/pages/`: The transpiled Go page templates and registration functions.
+- `internal/spidey/routes/`: Auto-generated route registrations (`routes.go` for pages, `api_routes.go` for API handlers).
+- `internal/spidey/spidey_base.go`: Shared template rendering runtime.
