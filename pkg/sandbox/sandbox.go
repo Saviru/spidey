@@ -2,28 +2,66 @@ package sandbox
 
 import (
 	"fmt"
-
-	"github.com/traefik/yaegi/interp"
-	"github.com/traefik/yaegi/stdlib"
+	"go/parser"
+	"go/token"
+	"strings"
 )
 
-func EvalFrontmatter(script string, defaultData interface{}) (interface{}, error) {
-	i := interp.New(interp.Options{
-		Unrestricted: false,
-	})
+var AllowedImports = map[string]bool{
+	"fmt":           true,
+	"strings":       true,
+	"strconv":       true,
+	"time":          true,
+	"math":          true,
+	"math/rand":     true,
+	"encoding/json": true,
+	"html":          true,
+	"html/template": true,
+}
 
-	i.Use(stdlib.Symbols)
+var BlockedImports = map[string]string{
+	"os":      "access to the operating system is blocked",
+	"os/exec": "executing shell commands is blocked",
+	"syscall": "low-level system calls are blocked",
+	"unsafe":  "memory manipulation is blocked",
+	"plugin":  "dynamic library loading is blocked",
+	"runtime": "runtime introspection is blocked",
+}
 
-	_, err := i.Eval(script)
+func ValidateFrontmatter(code string) error {
+	fset := token.NewFileSet()
+	// Wrap user code in a virtual package for AST parsing
+	src := fmt.Sprintf("package sandbox\n\n%s", code)
+	node, err := parser.ParseFile(fset, "", src, parser.ImportsOnly)
 	if err != nil {
-		return nil, fmt.Errorf("Frontmatter syntax error: %v", err)
+		return fmt.Errorf("frontmatter syntax error: %w", err)
+	}
+	for _, imp := range node.Imports {
+		path := strings.Trim(imp.Path.Value, `"`)
+		if reason, blocked := BlockedImports[path]; blocked {
+			return fmt.Errorf("security violation: import %q is forbidden (%s)", path, reason)
+		}
+		if !AllowedImports[path] {
+			return fmt.Errorf("security violation: import %q is not in the sandbox allowlist", path)
+		}
+	}
+	return nil
+}
+
+func MergeParams(renderData, urlParams interface{}) interface{} {
+	paramMap, hasParams := urlParams.(map[string]interface{})
+	if !hasParams || paramMap == nil {
+		return renderData
+	}
+	resMap, isMap := renderData.(map[string]interface{})
+	if !isMap || resMap == nil {
+		return urlParams
 	}
 
-	// Look for a standard Render() function defined by the user
-	v, err := i.Eval("Render()")
-	if err == nil && v.IsValid() {
-		return v.Interface(), nil
+	for k, v := range paramMap {
+		if _, exists := resMap[k]; !exists {
+			resMap[k] = v
+		}
 	}
-
-	return defaultData, nil
+	return resMap
 }

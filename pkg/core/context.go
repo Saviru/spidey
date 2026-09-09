@@ -58,10 +58,13 @@ func (c *Context) JSON(status int, data interface{}) {
 	json.NewEncoder(c.Writer).Encode(data)
 }
 
+var MaxJSONBodySize int64 = 10 * 1024 * 1024
+
 // automatically parses the incoming JSON request body into a struct
 func (c *Context) BindJSON(obj interface{}) error {
 	defer c.Request.Body.Close()
-	if err := json.NewDecoder(c.Request.Body).Decode(obj); err != nil {
+	reader := http.MaxBytesReader(c.Writer, c.Request.Body, MaxJSONBodySize)
+	if err := json.NewDecoder(reader).Decode(obj); err != nil {
 		return err
 	}
 	return validate.Struct(obj)

@@ -3,20 +3,17 @@ package dev
 import (
 	"embed"
 	"fmt"
-	"io"
-	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/saviru/spidey/internal/bundler"
+	"github.com/saviru/spidey/internal/cli"
 	"github.com/saviru/spidey/internal/config"
 
 	"github.com/fsnotify/fsnotify"
@@ -42,7 +39,7 @@ func startLiveReloadServer() string {
 		case <-r.Context().Done():
 			return
 		case <-reload:
-			fmt.Fprintf(w, "data: reload\n\n")
+			cli.Info("dev", "Reloading...")
 			if flusher, ok := w.(http.Flusher); ok {
 				flusher.Flush()
 			}
@@ -51,7 +48,7 @@ func startLiveReloadServer() string {
 
 	listener, err := net.Listen("tcp", ":0")
 	if err != nil {
-		log.Println("Engine Error: Could not start livereload server.", err)
+		cli.Error("dev", "Could not start live reload server.")
 		return "3001" // fallback
 	}
 
@@ -74,17 +71,6 @@ func triggerReload() {
 	clients = nil
 }
 
-type filterWriter struct {
-	w io.Writer
-}
-
-func (fw filterWriter) Write(p []byte) (n int, err error) {
-	if strings.Contains(string(p), "Spidey Server running on") {
-		return len(p), nil
-	}
-	return fw.w.Write(p)
-}
-
 // Find difined port no
 func getPort(projectDir string, cfg *config.Config) string {
 	mainPath := filepath.Join(projectDir, "api", "main.go")
@@ -101,17 +87,19 @@ func getPort(projectDir string, cfg *config.Config) string {
 
 // Accept templates as the second argument
 func StartWatcher(projectDir string, templates embed.FS, cfg *config.Config) {
+	startTime := time.Now()
 	liveReloadPort := startLiveReloadServer()
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		cli.Error("dev", "Could not start live reload server.")
+		os.Exit(1)
 	}
 	defer watcher.Close()
 
-	fmt.Println("Spidey: Running initial sync...")
+	cli.Info("dev", "Running initial sync...")
 	if err := bundler.ProcessPages(projectDir, templates, liveReloadPort, cfg); err != nil {
-		fmt.Println("Sync error:", err)
+		cli.Error("dev", "Sync error.")
 	}
 
 	pagesDir := filepath.Join(projectDir, "pages")
@@ -120,7 +108,8 @@ func StartWatcher(projectDir string, templates embed.FS, cfg *config.Config) {
 
 	err = watcher.Add(pagesDir)
 	if err != nil {
-		log.Fatal("Engine Error: Could not watch pages folder.", err)
+		cli.Error("dev", "Could not watch pages folder.")
+		os.Exit(1)
 	}
 
 	watcher.Add(componentsDir)
@@ -128,11 +117,11 @@ func StartWatcher(projectDir string, templates embed.FS, cfg *config.Config) {
 
 	port := getPort(projectDir, cfg)
 
-	fmt.Printf("Spidey is running on %s\n", "http://localhost:"+port)
-
 	restartServer(projectDir, cfg)
+	cli.DevBanner("Development build", port, time.Since(startTime))
+
 	openBrowser("http://localhost:" + port)
-	fmt.Println("Spidey: monitoring for changes.")
+	cli.Info("dev", "Monitoring for changes...")
 
 	for {
 		select {
@@ -143,9 +132,9 @@ func StartWatcher(projectDir string, templates embed.FS, cfg *config.Config) {
 
 			// ignore metadata changes (like chmod)
 			if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) || event.Has(fsnotify.Remove) {
-				fmt.Printf("File changed: %s | Syncing...\n", filepath.Base(event.Name))
+				cli.Info("dev", fmt.Sprintf("File changed: %s | Syncing...", filepath.Base(event.Name)))
 				if err := bundler.ProcessPages(projectDir, templates, liveReloadPort, cfg); err != nil {
-					fmt.Println("Sync error:", err)
+					cli.Error("dev", "Sync error.")
 				}
 				restartServer(projectDir, cfg)
 				go func() {
@@ -158,7 +147,7 @@ func StartWatcher(projectDir string, templates embed.FS, cfg *config.Config) {
 			if !ok {
 				return
 			}
-			log.Println("Watcher error:", err)
+			cli.Error("dev", fmt.Sprintf("Watcher error: %v", err))
 		}
 	}
 }
@@ -172,38 +161,36 @@ func restartServer(projectDir string, cfg *config.Config) {
 	}
 
 	if err := bundler.CompileBinary(projectDir, cfg); err != nil {
-		fmt.Printf("Compilation Error: %v\n", err)
+		cli.Error("dev", fmt.Sprintf("Compilation Error: %v", err))
 		return
 	}
 
 	serverPath := filepath.Join(projectDir, cfg.Directories.OutputDir)
-	if runtime.GOOS == "windows" {
-		serverPath += ".exe"
-	}
+	serverPath += cli.DetectOS()
 
 	serverCmd = exec.Command(serverPath)
 	serverCmd.Dir = projectDir
-	serverCmd.Stdout = filterWriter{os.Stdout}
-	serverCmd.Stderr = filterWriter{os.Stderr}
+	serverCmd.Stdout = os.Stdout
+	serverCmd.Stderr = os.Stderr
 
 	if err := serverCmd.Start(); err != nil {
-		fmt.Println("Engine Error: Failed to start server, ", err)
+		cli.Error("dev", "Failed to start server.")
 	}
 }
 
 func openBrowser(url string) {
 	var err error
-	switch runtime.GOOS {
-	case "linux":
+	switch cli.DetectOS() {
+	case ".bin":
 		err = exec.Command("xdg-open", url).Start()
-	case "windows":
+	case ".exe":
 		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
+	case ".app":
 		err = exec.Command("open", url).Start()
 	default:
 		err = fmt.Errorf("unsupported platform")
 	}
 	if err != nil {
-		fmt.Printf("Engine Error: Failed to open browser: %v\n", err)
+		cli.Error("dev", "Failed to open browser.")
 	}
 }

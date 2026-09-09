@@ -5,35 +5,39 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/saviru/spidey/internal/cli"
 )
 
 func createFileIfNotExists(path string, content []byte) {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		os.WriteFile(path, content, 0644)
 	} else {
-		fmt.Printf("Skipped %s (already exists)\n", path)
+		cli.Warn("init", fmt.Sprintf("Skipped %s (already exists)", path))
 	}
 }
 
 func initProject(projectName string) {
 	if projectName != "" {
-		fmt.Printf("Initializing Go module: %s\n", projectName)
+		cli.Info("init", fmt.Sprintf("Initializing Go module: %s", projectName))
 		cmd := exec.Command("go", "mod", "init", projectName)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
-			fmt.Printf("Warning: Failed to initialize Go module: %v\n", err)
+			cli.Error("init", fmt.Sprintf("Failed to initialize Go module: %v", err))
 		}
 	}
 
-	fmt.Println("Fetching dependencies...")
-	getCmd := exec.Command("go", "get", "github.com/goccy/go-json", "github.com/go-playground/validator/v10", "github.com/saviru/spidey@v0.26.904", "github.com/traefik/yaegi/interp", "github.com/traefik/yaegi/stdlib", "github.com/redis/go-redis/v9", "github.com/gorilla/websocket")
+	cli.Info("init", "Fetching dependencies...")
+	getCmd := exec.Command("go", "get", "github.com/goccy/go-json", "github.com/go-playground/validator/v10", "github.com/saviru/spidey/internal/core", "github.com/traefik/yaegi/interp", "github.com/traefik/yaegi/stdlib", "github.com/redis/go-redis/v9", "github.com/gorilla/websocket")
 	getCmd.Stdout = os.Stdout
 	getCmd.Stderr = os.Stderr
-	getCmd.Run()
+	if err := getCmd.Run(); err != nil {
+		cli.Error("init", fmt.Sprintf("Failed to fetch dependencies: %v", err))
+	}
 
 	// Create workspace folders
-	fmt.Println("Creating workspace folders...")
+	cli.Info("init", "Creating workspace folders...")
 	dirs := []string{"api", "internal/spidey", "internal/spidey/pages", "internal/spidey/routes", "pages", "components", "public"}
 	for _, dir := range dirs {
 		os.MkdirAll(dir, 0755)
@@ -49,7 +53,7 @@ func initProject(projectName string) {
 
 		createFileIfNotExists("internal/spidey/spidey_base.go", []byte(baseCode))
 	} else {
-		fmt.Println("Warning: Failed to create base file.")
+		cli.Warn("init", "Failed to create base file.")
 	}
 
 	// .gitignore
@@ -61,7 +65,7 @@ func initProject(projectName string) {
 	if err == nil {
 		createFileIfNotExists("spidey.config.json", configJsonBytes)
 	} else {
-		fmt.Println("Warning: Failed to create spidey.config.json file.")
+		cli.Warn("init", "Failed to create spidey.config.json file.")
 	}
 
 	// api/main.go
@@ -71,21 +75,21 @@ func initProject(projectName string) {
 		apiMainCode := fmt.Sprintf(apiMainCodeTpl, projectName)
 		createFileIfNotExists("api/main.go", []byte(apiMainCode))
 	} else {
-		fmt.Println("Warning: Failed to create api/main.go file.")
+		cli.Warn("init", "Failed to create api/main.go file.")
 	}
 
 	defaultPageBytes, err := starterTemplates.ReadFile("templates/spidey/app.html")
 	if err == nil {
 		createFileIfNotExists("app.spidey", defaultPageBytes)
 	} else {
-		fmt.Println("Warning: Failed to create app.spidey template.")
+		cli.Warn("init", "Failed to create app.spidey template.")
 	}
 
 	indexPageBytes, err := starterTemplates.ReadFile("templates/spidey/index.html")
 	if err == nil {
 		createFileIfNotExists("pages/index.spidey", indexPageBytes)
 	} else {
-		fmt.Println("Warning: Failed to create index.spidey template.")
+		cli.Warn("init", "Failed to create index.spidey template.")
 	}
 
 	// Create a placeholder routes file to prevent "undefined: pages.RegisterRoutes" errors
@@ -99,8 +103,9 @@ func initProject(projectName string) {
 		routesCode := fmt.Sprintf(string(routesByte), importPath)
 		createFileIfNotExists("internal/spidey/routes/routes.go", []byte(routesCode))
 	} else {
-		fmt.Println("Warning: Failed to inject default route. Please run 'spidey dev' to fix it.")
+		cli.Warn("init", "Failed to inject default route. Please run 'spidey dev' to fix it.")
 	}
 
-	fmt.Println("Spidey workspace created successfully")
+	cli.Ready("Workspace initialized successfully.")
+	fmt.Println("Run 'spidey dev' to start the development server.")
 }
