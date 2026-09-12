@@ -4,9 +4,17 @@
 
 package pages
 
-import "fmt"
+import (
+	"fmt"
+	"html/template"
+	"strings"
+)
 
 type Renderer func(interface{}) (string, error)
+
+var FuncMap = template.FuncMap{
+	"dict": Dict,
+}
 
 var registry = make(map[string]Renderer)
 
@@ -19,4 +27,28 @@ func Render(name string, data interface{}) (string, error) {
 		return fn(data)
 	}
 	return "", fmt.Errorf("template '%s' not found. Try again with 'spidey build'?", name)
+}
+
+func Dict(values ...interface{}) (map[string]interface{}, error) {
+	if len(values)%2 != 0 {
+		return nil, fmt.Errorf("invalid dict call: odd number of arguments")
+	}
+	dict := make(map[string]interface{}, len(values)/2)
+
+	// i = key, i+1 = value, {key="value"}
+	for i := 0; i < len(values); i += 2 {
+		key, ok := values[i].(string)
+		if !ok {
+			return nil, fmt.Errorf("dict keys must be strings")
+		}
+		val := values[i+1]
+		dict[key] = val
+		if len(key) > 0 {
+			titleKey := strings.ToUpper(key[:1]) + key[1:]
+			dict[titleKey] = val
+			lowerKey := strings.ToLower(key[:1]) + key[1:]
+			dict[lowerKey] = val
+		}
+	}
+	return dict, nil
 }

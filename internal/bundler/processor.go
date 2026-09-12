@@ -56,7 +56,7 @@ func buildNestedLayout(pagesDir, pagePath, appLayoutStr string) string {
 }
 
 func setupGeneratedDirectory(projectDir string, templates embed.FS) error {
-	genDir := filepath.Join(projectDir, "hub", "pages")
+	genDir := filepath.Join(projectDir, "internal", "pages")
 
 	os.RemoveAll(genDir)
 	os.MkdirAll(genDir, 0755)
@@ -814,8 +814,9 @@ document.addEventListener("DOMContentLoaded", () => {
 			if strings.HasSuffix(path, ".jsx") {
 				fmt.Println("Error: JSX is not supported in Spidey.")
 			} else if strings.HasSuffix(path, ".js") {
-				fmt.Printf("Warning: Please avoid using .js files directly (%s). Use the native .spidey format in components.\n", filepath.Base(path))
 				jsEntries = append(jsEntries, path)
+			} else if strings.HasSuffix(path, ".spidey") {
+				fmt.Println("Error: Unknown file type.")
 			}
 		}
 		return nil

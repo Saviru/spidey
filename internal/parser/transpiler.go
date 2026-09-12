@@ -3,10 +3,73 @@ package parser
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/saviru/spidey/pkg/sandbox"
 )
+
+var attrRe = regexp.MustCompile(`([a-zA-Z_:][a-zA-Z0-9_:-]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>` + "`" + `]+)))?`)
+
+func parseComponentAttrs(attrs string) (bool, string) {
+	isIsland := false
+	matches := attrRe.FindAllStringSubmatch(attrs, -1)
+
+	var dictArgs []string
+	for _, m := range matches {
+		name := m[1]
+		if name == "client:load" {
+			isIsland = true
+			continue
+		}
+
+		var val string
+		hasValue := false
+		if m[2] != "" || strings.Contains(m[0], `="`) {
+			val = m[2]
+			hasValue = true
+		} else if m[3] != "" || strings.Contains(m[0], `='`) {
+			val = m[3]
+			hasValue = true
+		} else if m[4] != "" {
+			val = m[4]
+			hasValue = true
+		}
+
+		if !hasValue {
+			// Boolean attribute without explicit value (e.g. <Button disabled />)
+			dictArgs = append(dictArgs, strconv.Quote(name), "true")
+			continue
+		}
+		trimmed := strings.TrimSpace(val)
+		if strings.HasPrefix(trimmed, "{{") && strings.HasSuffix(trimmed, "}}") {
+			// Dynamic expression: title="{{ .title }}" -> "title" .title
+			expr := strings.TrimSpace(trimmed[2 : len(trimmed)-2])
+			dictArgs = append(dictArgs, strconv.Quote(name), expr)
+		} else if strings.HasPrefix(trimmed, ".") || strings.HasPrefix(trimmed, "$") {
+			// Pipeline reference: title=.title -> "title" .title
+			dictArgs = append(dictArgs, strconv.Quote(name), trimmed)
+		} else if trimmed == "true" || trimmed == "false" {
+			dictArgs = append(dictArgs, strconv.Quote(name), trimmed)
+		} else if m[4] != "" {
+			// Unquoted numeric value: count=5 -> "count" 5
+			if _, err := strconv.ParseFloat(trimmed, 64); err == nil {
+				dictArgs = append(dictArgs, strconv.Quote(name), trimmed)
+			} else {
+				dictArgs = append(dictArgs, strconv.Quote(name), strconv.Quote(trimmed))
+			}
+		} else {
+			// Quoted string literal: title="Click Me" -> "title" "Click Me"
+			dictArgs = append(dictArgs, strconv.Quote(name), strconv.Quote(val))
+		}
+	}
+
+	if len(dictArgs) == 0 {
+		return isIsland, "."
+	}
+
+	return isIsland, fmt.Sprintf("(dict %s)", strings.Join(dictArgs, " "))
+}
 
 // converts .spidey into .go
 func TranspileToGo(modName string, componentName string, rawContent string, appLayout string, components string, globalStyles *strings.Builder) (string, error) {
@@ -32,10 +95,11 @@ func TranspileToGo(modName string, componentName string, rawContent string, appL
 		if len(submatch) == 3 {
 			compName := submatch[1]
 			attrs := submatch[2]
-			if strings.Contains(attrs, "client:load") {
-				return fmt.Sprintf(`<spidey-island data-component="%s">{{template "%s" .}}</spidey-island>`, compName, compName)
+			isIsland, pipeline := parseComponentAttrs(attrs)
+			if isIsland {
+				return fmt.Sprintf(`<spidey-island data-component="%s">{{template "%s" %s}}</spidey-island>`, compName, compName, pipeline)
 			}
-			return fmt.Sprintf(`{{template "%s" .}}`, compName)
+			return fmt.Sprintf(`{{template "%s" %s}}`, compName, pipeline)
 		}
 		return match
 	}
@@ -87,7 +151,8 @@ func TranspileToGo(modName string, componentName string, rawContent string, appL
 		builder.WriteString("\t\tdata = sandbox.MergeParams(renderResult, data)\n\n")
 	}
 
-	builder.WriteString(fmt.Sprintf("\t\ttmpl, err := template.New(\"%s\").Parse(`%s`)\n", componentName, safeHTML))
+	builder.WriteString(fmt.Sprintf("\t\ttmpl, err := template.New(\"%s\").Funcs(spidey.FuncMap).Parse(`%s`)\n", componentName, safeHTML))
+
 	builder.WriteString("\t\tif err != nil {\n\t\t\treturn \"\", err\n\t\t}\n")
 	builder.WriteString("\t\tvar buf bytes.Buffer\n")
 	builder.WriteString("\t\terr = tmpl.Execute(&buf, data)\n")
