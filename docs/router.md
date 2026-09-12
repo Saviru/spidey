@@ -1,6 +1,6 @@
 # Router API
 
-Spidey's `hub/router` package provides a robust routing and context engine. It natively wraps Go's `http.ServeMux` but adds an ergonomic layer similar to Express or Fiber.
+Spidey's `pkg/router` package provides a robust routing and context engine. It natively wraps Go's `http.ServeMux` but adds an ergonomic layer similar to Express or Fiber.
 
 ## The Context Object
 
@@ -75,5 +75,5 @@ app.Group("/api").Proxy("/users", "http://localhost:8080")
 You can manually serve static folders using `Static`:
 
 ```go
-app.Static("/assets", "public/assets")
+app.Static("/assets/", "public/assets")
 ```

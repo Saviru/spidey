@@ -5,25 +5,28 @@
 You need Go installed on your machine. Install the Spidey CLI globally:
 
 ```bash
-go install github.com/yourusername/spidey/cmd/spidey@latest
+go install github.com/saviru/spidey/cmd/spidey@latest
 ```
 
 ## Creating a Project
 
-Run the initialization command:
+Create a directory for your project and run the initialization command inside it:
 
 ```bash
-spidey init [project-name]
+mkdir my-app && cd my-app
+spidey init my-app
 ```
 
-This will create a new directory (or initialize the current one) with the following structure:
+This initializes the Go module in the current working directory (`go mod init my-app`) and generates the initial workspace structure:
 
-- `api/`: Your backend Go API routes and main.go entry point.
-- `pages/`: Your `.spidey` files for frontend pages and routing.
+- `api/`: Your backend Go API routes and `main.go` entry point.
+- `pages/`: Your `.spidey` files for frontend pages and routing (`pages/index.spidey`).
 - `components/`: Your reusable `.spidey` components.
 - `public/`: Static assets (images, fonts, etc.).
 - `spidey.config.json`: Configuration file.
 - `app.spidey`: The root layout for your application.
+
+#### This never creates a folder for your app. Only creates the subfolders inside the working directory.
 
 ## Configuration
 
