@@ -6,11 +6,10 @@ require (
 	github.com/evanw/esbuild v0.28.2
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-playground/validator/v10 v10.30.3
-	github.com/goccy/go-json v0.10.6
+	github.com/goccy/go-json v0.11.2
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/redis/go-redis/v9 v9.22.0
-	github.com/traefik/yaegi v0.16.1
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/time v0.15.0
 )
